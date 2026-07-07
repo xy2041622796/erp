@@ -136,9 +136,7 @@ const filteredDictRows = computed(() => {
       row.name,
       row.description,
       row.status,
-      getJobName(row.raw),
-      getDepartmentName(row.raw),
-    ].some((field) => text(field).includes(term));
+      ].some((field) => text(field).includes(term));
     return categoryMatched && keywordMatched;
   });
 });
@@ -158,7 +156,7 @@ const drawerSummary = computed(() => {
 async function loadData() {
   loading.value = true;
   try {
-    const res = await getTrainingList('Bil_HR_Training_Competency', { index: 1, page: 500, keyword: keyword.value });
+const res = await getTrainingList('Bil_HR_Training_Competency', { index: 1, page: 500 });
     rows.value = res.list || [];
   } finally {
     loading.value = false;
@@ -279,7 +277,7 @@ onMounted(loadData);
           <ElInput
             v-model="keyword"
             clearable
-            placeholder="搜索能力名称/岗位/部门"
+            placeholder="搜索能力名称/描述/状态"
             class="toolbar__input"
             :prefix-icon="Search"
             @keyup.enter="loadData"

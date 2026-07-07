@@ -321,10 +321,10 @@ onMounted(loadData);
             <template #default="{ row = {} } = {}">{{ pickValue(row, ['employeeName', 'employee_name', 'name']) }}</template>
           </ElTableColumn>
           <ElTableColumn label="能力项" min-width="160">
-            <template #default="{ row = {} } = {}">{{ pickValue(row, ['competencyName', 'title']) }}</template>
+            <template #default="{ row = {} } = {}">{{ getCompetency(row) }}</template>
           </ElTableColumn>
           <ElTableColumn label="差距结论" min-width="220">
-            <template #default="{ row = {} } = {}">{{ pickValue(row, ['result', 'summary', 'remark']) }}</template>
+            <template #default="{ row = {} } = {}">{{ getConclusion(row) }}</template>
           </ElTableColumn>
           <ElTableColumn label="状态" width="120">
             <template #default="{ row = {} } = {}">{{ pickValue(row, ['status', 'state']) }}</template>
