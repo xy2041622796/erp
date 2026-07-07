@@ -241,7 +241,68 @@ async function handleDelete(row: any) {
 }
 
 function exportReport() {
-  window.print();
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const summaryRows = [
+    { label: '差距记录总数', value: rows.value.length },
+    { label: '当前检索', value: `${filteredRows.value.length} (${currentRate.value}%)` },
+    { label: '重点差距', value: highGapCount.value },
+    { label: '涉及对象', value: objectCount.value || rows.value.length },
+  ];
+
+  const dataRows = filteredRows.value.map((row) => [
+    text(getObject(row)),
+    text(getCompetency(row)),
+    text(getConclusion(row)),
+    text(getStatus(row)),
+    text(pickValue(row, ['gapLevel'])),
+  ]);
+
+  const summaryHtml = summaryRows.map(s =>
+    `<div class="si"><div class="v">${s.value}</div><div class="l">${s.label}</div></div>`
+  ).join('');
+  const tableRows = dataRows.map(r =>
+    `<tr>${r.map(c => `<td>${c || '-'}</td>`).join('')}</tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>能力差距分析报告</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Microsoft YaHei','PingFang SC',sans-serif;padding:40px;color:#303133}
+  h1{font-size:22px;margin-bottom:8px}
+  .sub{color:#909399;font-size:13px;margin-bottom:24px}
+  .sum{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .si{border:1px solid #e4e7ed;border-radius:6px;padding:14px 16px;text-align:center}
+  .si .v{font-size:24px;font-weight:700;color:#303133}
+  .si .l{font-size:12px;color:#909399;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid #e4e7ed;padding:8px 10px;text-align:left}
+  th{background:#f5f7fa;font-weight:600;color:#606266}
+  tr:nth-child(even){background:#fafafa}
+  .ft{margin-top:24px;font-size:11px;color:#c0c4cc;text-align:right}
+</style></head><body>
+<h1>能力差距分析报告</h1>
+<div class="sub">导出日期：${dateStr}</div>
+<div class="sum">${summaryHtml}</div>
+<table><thead><tr>
+  <th>分析对象</th><th>能力项</th><th>差距结论</th><th>状态</th><th>差距等级</th>
+</tr></thead><tbody>${tableRows}</tbody></table>
+<div class="ft">共 ${dataRows.length} 条记录 · 能力差距分析系统</div>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    ElMessage.warning('浏览器阻止了弹出窗口，请允许弹出后重试');
+    URL.revokeObjectURL(url);
+    return;
+  }
+  win.onload = () => {
+    win.print();
+    URL.revokeObjectURL(url);
+  };
 }
 
 onMounted(loadData);
