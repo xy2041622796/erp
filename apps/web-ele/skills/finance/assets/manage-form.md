@@ -1,0 +1,22 @@
+# 资产管理新增、编辑、变更与凭证弹窗
+
+- 页面入口：`src/views/finance/assets/manage/index.vue`、`src/views/finance/assets/manage/list/index.vue`
+- 新增/编辑弹窗：`src/views/finance/assets/manage/modules/form.vue`
+- 变更凭证草稿工具：`src/views/finance/assets/manage/modules/assetChangeVoucher.ts`
+- 凭证弹窗复用：`src/views/finance/Voucher/modules/form.vue`
+- 变更弹窗：
+  - `src/views/finance/assets/manage/modules/OriginalValueAdjustDialog.vue`：原值调整。
+  - `src/views/finance/assets/manage/modules/AccumulatedDepreciationAdjustDialog.vue`：累计折旧调整。
+  - `src/views/finance/assets/manage/modules/ServiceLifeAdjustDialog.vue`：使用年限调整。
+  - `src/views/finance/assets/manage/modules/SubjectAdjustDialog.vue`：科目调整。
+  - `src/views/finance/assets/manage/modules/DepartmentAdjustDialog.vue`：部门调整。
+  - `src/views/finance/assets/manage/modules/DepreciationMethodAdjustDialog.vue`：折旧方法调整。
+  - `src/views/finance/assets/manage/modules/StatusChangeDialog.vue`：状态修改。
+- 页面能力：资产列表查询、新增资产、编辑资产、处置资产、按不同变更类型打开独立弹窗并保存资产主数据，同时写入资产变更记录。
+- 列表展示规则：资产列表直接展示 `fetchAssetList` 返回的全部资产，不再按启用期间过滤掉资产初始化中录入的期初资产；资产列表按资产属性进行同类项合并。页面使用 `groupedRows` 先按固定资产、无形资产、长期待摊费用和资产属性排序，再通过 Element Plus 表格 `span-method` 合并“资产属性”列相邻同类项；每个资产属性分组末尾自动追加一条“小计”行，汇总资产原值、本月折旧/摊销、累计折旧/摊销和账面净值，小计行不展示编辑、变更、处置、删除操作；规格型号列使用单行省略展示，鼠标悬停通过原生 `title` 查看完整规格，避免长型号撑高表格行。
+- 新增/编辑规则：选择资产类别后自动识别固定资产、无形资产、长期待摊费用，带出摊销类型、资产科目、累计折旧/累计摊销相关科目、折旧/摊销费用科目、资产处置科目；如果资产类别未配置资产科目，则按类型兜底自动带出固定资产 `1601`、无形资产 `1701`、长期待摊费用 `1801` 或对应名称匹配科目；开始使用日期或录入期间变化时，按月份差自动代入“已折旧月份”，其中“录入当期是否折旧”为“是”时在月份差基础上额外计入录入当期，为“否”时不计入录入当期，并同步剩余使用月份、预计残值、月摊销额、净值；“录入当期是否折旧”与摊销类型联动，固定资产自动为“否”，无形资产、长期待摊费用自动为“是”，字段仍允许手工调整。
+- 变更规则：资产列表“变更”操作使用下拉菜单，各变更项不再共用 `check-ledger/modules/form.vue`，每个变更项使用独立弹窗；弹窗包含资产基本信息、变更内容、变更日期/期间和变更原因，保存后调用 `saveAsset` 更新资产，并通过 `createAssetChangeWithVoucher` 写入资产变更台账。
+- 变更生成凭证规则：变更记录保存成功后，不直接落库凭证，而是触发 `finance-asset-change-voucher-draft` 事件；资产列表页面监听该事件，将凭证草稿写入 `sessionStorage.finance_voucher_create_draft`，并跳转到 `FinanceVoucherCreate` 新增凭证页面，携带 `source=asset-change` 与 `returnPath=/finance/assets/manage?tab=list`。用户在新增凭证页面保存后，凭证落库，`Voucher/create.vue` 回写资产变更记录的 `voucher_generated`、`voucher_no`、`voucher_date`，然后按 `returnPath` 返回资产列表。
+- 处置规则：资产处置确认后同样通过 `createAssetChangeWithVoucher` 写入变更记录并弹出新增凭证弹窗，凭证保存后回写资产变更记录。
+- 使用接口/数据：`fetchAssetList` 查询资产，`saveAsset` 保存资产，`hardDeleteAsset` 删除资产，`createAssetChange` 记录资产变更，`updateAssetChangeVoucher` 回写凭证信息，`createVoucher` 保存凭证，`fetchAssetCategorySimpleList` 获取资产类别，`getSubjectList` 获取启用会计科目，`getFinanceAuxiliaryValueOptions` 获取部门/供应商辅助核算值，`buildNextAssetCode` 生成资产编号。
+- 复用能力：复用现有 Element Plus 表单、表格合并单元格能力、Vben Modal、资产类别 API、资产管理 API、资产变更 API、凭证弹窗、凭证 API、会计科目列表 API、辅助核算值 API、金额计算工具 `decimal-money`、资产保存/删除变更记录工具。

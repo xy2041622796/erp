@@ -1,0 +1,2712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>领码.SPARK - 登录 / 注册</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- <link rel="stylesheet" href="/output.css"> -->
+  <!-- 允许 TailwindCSS -->
+  <link href="/NewApp/UserLoginManagement/tailwind.css" rel="stylesheet">
+  </link>
+  <!-- 你原有依赖 -->
+  <script src="https://wwcdn.weixin.qq.com/node/open/js/wecom-jssdk-2.0.2.js"></script>
+  <script src="https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js"></script>
+  <script src="/js/signalr/signalr.min.js"></script>
+  <script src="/js/signalr/jquery-3.7.1.min.js"></script>
+  <script src="/js/layui/layui.js"></script>
+  <script src="/js/Qy.Base.js"></script>
+  <script src="/js/signalr/qrcode.js"></script>
+
+  <style>
+    /* ===== 兼容：禁用浏览器/组件默认密码显示按钮 ===== */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+      display: none !important;
+    }
+
+    input[type="password"]::-webkit-contacts-auto-fill-button,
+    input[type="password"]::-webkit-credentials-auto-fill-button {
+      display: none !important;
+    }
+
+    /* ===== 登录二维码弹层（保留你原逻辑需要的结构） ===== */
+    .modal-mask {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(48, 65, 90, 0.22);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.22s;
+    }
+
+    .modal-mask.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+
+    .auth-btn {
+      @apply inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium transition hover:bg-slate-50 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30;
+    }
+
+    .auth-icon {
+      @apply inline-flex items-center justify-center h-8 w-8 rounded-full border transition;
+    }
+
+    .auth-text {
+      @apply whitespace-nowrap;
+    }
+
+    .modal-qr-box {
+      width: min(92vw, 420px);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 18px 60px rgba(47, 79, 143, 0.25);
+      padding: 22px 22px 18px 22px;
+      position: relative;
+      border: 1px solid rgba(59, 130, 246, 0.18);
+      animation: modalPop .17s;
+    }
+
+    @keyframes modalPop {
+      0% {
+        transform: scale(.92);
+      }
+
+      80% {
+        transform: scale(1.02);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .modal-close {
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: none;
+      color: #9aa4b2;
+      cursor: pointer;
+      font-size: 26px;
+      line-height: 1;
+      border-radius: 999px;
+      transition: all .12s;
+    }
+
+    .modal-close:hover {
+      background: #f3f4f6;
+      color: #ef4444;
+    }
+
+    .modal-qrcode-pic {
+      width: 176px;
+      height: 176px;
+      background: #f8fafc;
+      border: 1.5px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      position: relative;
+      overflow: hidden;
+      margin: 14px auto 10px auto;
+    }
+
+    .modal-qr-placeholder .icon {
+      width: 40px;
+      height: 40px;
+      animation: rotate 1.5s linear infinite;
+      transform-origin: center center;
+    }
+
+    @keyframes rotate {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* 企微 iframe 适配（你原代码会注入到 #modal-qrcode-img） */
+    #qr-modal-mask iframe {
+      display: block;
+      border: none;
+      background: transparent;
+      width: 320px;
+      height: 380px;
+      position: absolute;
+      top: -126px;
+      left: -82px;
+      scale: 0.76;
+    }
+
+    /* 微信 / 企业微信官方 SDK 二维码容器：不再裁剪 iframe */
+    .modal-qrcode-pic.third-party-sdk-mode {
+      width: min(92vw, 320px);
+      height: 380px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .modal-qrcode-pic.third-party-sdk-mode #modal-qrcode-img {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-qrcode-pic.third-party-sdk-mode iframe {
+      position: static !important;
+      top: auto !important;
+      left: auto !important;
+      display: block !important;
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      background: transparent !important;
+      scale: 1 !important;
+      transform: none !important;
+    }
+
+    /* 登录页密码眼睛按钮 */
+    .input-wrapper {
+      position: relative;
+      display: flex;
+    }
+
+    .toggle-visibility {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      user-select: none;
+      opacity: .8;
+    }
+
+    .toggle-visibility svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* 注册页 password wrapper（沿用你的定位方式） */
+    .password-wrapper {
+      position: relative !important;
+      z-index: 1 !important;
+    }
+
+    .password-toggle-btn {
+      position: absolute !important;
+      right: 8px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      z-index: 2 !important;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      cursor: pointer !important;
+    }
+
+    .error-message-inline {
+      display: none;
+      position: absolute;
+      top: 42px;
+      left: 0;
+      font-size: 12px;
+      color: #ef4444;
+    }
+
+    /* 按钮加载状态 */
+    .btn-loading {
+      position: relative;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .btn-loading::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      top: 50%;
+      left: 50%;
+      margin-left: -8px;
+      margin-top: -8px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spinner 0.6s linear infinite;
+    }
+
+    @keyframes spinner {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-50">
+  <!-- 顶部品牌条（更现代一点） -->
+  <header class="sticky top-0 z-40 backdrop-blur bg-white/70 border-b border-slate-200 md:hidden">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div id="header-logo" class="h-9 w-9 rounded-xl bg-gradient-to-br shadow-sm"></div>
+        <div class="leading-tight">
+          <div class="text-slate-900 font-semibold">领码.SPARK</div>
+          <div class="text-xs text-slate-500">统一登录与企业注册</div>
+        </div>
+      </div>
+      <div class="text-xs text-slate-500">
+        支持账号/验证码/扫码登录 · 企业注册审核
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 md:py-0 md:flex md:min-h-screen md:items-center md:justify-center">
+    <div class="grid grid-cols-1 lg:grid-cols-12">
+      <!-- 左侧插画卡 -->
+      <section class="lg:col-span-4">
+        <div
+          class="rounded-l-2xl overflow-hidden shadow-[0_18px_60px_rgba(2,6,23,0.10)] bg-gradient-to-br from-sky-400 to-blue-700 p-7 relative min-h-[220px] lg:min-h-[680px]">
+          <!-- 装饰 -->
+          <div class="absolute inset-0 opacity-15 pointer-events-none">
+            <svg width="100%" height="100%" viewBox="0 0 430 540" fill="none" preserveAspectRatio="none">
+              <ellipse cx="322" cy="80" rx="35" ry="35" fill="#fff" />
+              <ellipse cx="82" cy="64" rx="12" ry="12" fill="#fff" />
+              <rect x="45" y="410" width="85" height="25" rx="12" fill="#fff" />
+              <rect x="310" y="373" width="40" height="10" rx="5" fill="#fff" />
+            </svg>
+          </div>
+
+          <div class="relative z-10 flex flex-col h-full">
+            <div class="text-white">
+              <div class="text-2xl font-semibold tracking-wide">欢迎使用 领码.SPARK</div>
+              <div class="text-white/85 text-sm mt-2 leading-relaxed">
+                统一身份认证 · 企业管理 · 数据安全
+              </div>
+            </div>
+
+            <div class="mt-8 flex-1 hidden lg:flex items-center justify-center">
+              <!-- 简化插画 -->
+              <div class="relative w-[320px] h-[320px]">
+                <div class="absolute top-[40px] left-[30px] w-[220px] h-[120px] bg-white/80 rounded-[22px] shadow-sm">
+                </div>
+                <div
+                  class="absolute top-[90px] left-[125px] w-[86px] h-[166px] bg-slate-900/30 rounded-[22px] shadow-lg backdrop-blur">
+                  <div class="mt-[14px] mx-auto w-[68px] h-[18px] bg-white/85 rounded-[9px]"></div>
+                  <div class="mt-[10px] mx-auto w-[68px] h-[36px] bg-sky-100 rounded-[10px]"></div>
+                  <div
+                    class="mt-[10px] mx-auto w-[64px] h-[26px] bg-sky-400 rounded-[10px] flex items-center px-2 gap-2">
+                    <div class="w-4 h-4 bg-white rounded-md"></div>
+                    <div class="h-[6px] flex-1 bg-white/70 rounded"></div>
+                  </div>
+                  <div class="mt-[14px] mx-auto w-[18px] h-[18px] bg-white/80 rounded-full"></div>
+                </div>
+                <div class="absolute top-[20px] left-[36px] w-[60px] h-[24px] bg-white/40 rounded-full"></div>
+                <div class="absolute bottom-[54px] left-[40px] w-[40px] h-[14px] bg-white/30 rounded-full"></div>
+                <div class="absolute top-[120px] right-[44px] w-[36px] h-[14px] bg-white/25 rounded-full"></div>
+              </div>
+            </div>
+
+            <div class="text-white/85 text-xs mt-6">
+              登录后将自动跳转到系统首页
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右侧表单区 -->
+      <section class="lg:col-span-8">
+        <div
+          class="rounded-r-2xl bg-white shadow-[0_18px_60px_rgba(2,6,23,0.08)] auth-card border border-slate-200 overflow-hidden lg:min-h-[680px]">
+          <!-- 顶部切换：登录 / 注册 -->
+          <div class="px-6 pt-6">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-xl font-semibold text-slate-900">用户服务</div>
+                <div class="text-sm text-slate-500 mt-1">登录或提交用户注册申请</div>
+              </div>
+
+              <div class="inline-flex rounded-xl bg-slate-100 p-1">
+                <button id="tab-auth-login" type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-medium bg-white shadow-sm text-blue-700"
+                  onclick="UI.switchAuth('login')">登录</button>
+                <button id="tab-auth-register" type="button"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900"
+                  onclick="UI.switchAuth('register')">注册</button>
+              </div>
+            </div>
+
+            <div class="mt-5 border-b border-slate-200"></div>
+          </div>
+
+          <!-- 内容区 -->
+          <div class="p-6">
+            <!-- ========== 登录面板 ========== -->
+            <div id="panel-login">
+              <!-- 登录方式 tabs：账号 / 验证码 / 企业门户 -->
+              <div class="flex gap-6 items-center">
+                <button id="tab-account" class="text-sm font-semibold pb-2 border-b-2 border-blue-600 text-blue-700"
+                  type="button" onclick="LoginUI.switchLoginTab('account')">账号登录</button>
+
+                <button id="tab-phone"
+                  class="text-sm font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800"
+                  type="button" onclick="LoginUI.switchLoginTab('code')">验证码登录</button>
+              </div>
+
+              <!-- 账号密码登录                    required -->
+              <form id="login-form" class="mt-5 space-y-4" autocomplete="off">
+
+
+                <div class="relative">
+                  <select id="loginCompanySelect1" name="companyId" required class="w-full h-11 pl-3 pr-10 rounded-lg border border-slate-200 bg-white
+                           appearance-none
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                           text-slate-900">
+                    <option value="">请选择企业</option>
+                  </select>
+
+                  <!-- 自定义下拉箭头 -->
+                  <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    ▼
+                  </span>
+                </div>
+                <div id="loginCompanySelect-error" class="mt-1 text-sm text-red-600 hidden"></div>
+                <input id="input-username" type="text" placeholder="请输入账号" required
+                  class="w-full h-11 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
+                <div class="input-wrapper">
+                  <input id="input-password" type="password" placeholder="请输入密码" required
+                    class="w-full h-11 px-3 pr-10 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <span class="toggle-visibility" onclick="LoginUI.togglePassword()">
+                    <svg t="1754106405019" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                      <path
+                        d="M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066667 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z"
+                        fill="#111827"></path>
+                    </svg>
+                  </span>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <button class="h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    type="submit">登录</button>
+
+                  <div class="text-right text-sm">
+                    <a class="text-blue-600 hover:underline cursor-pointer" onclick="LoginUI.setNewPassword()">忘记密码
+                      →</a>
+                  </div>
+                </div>
+              </form>
+
+              <!-- 手机验证码登录 -->
+              <form id="phone-form" class="mt-5 space-y-4 hidden" autocomplete="off">
+
+
+                <select id="loginCompanySelect2" name="companyId" required class="w-full h-11 pl-3 pr-10 rounded-lg border border-slate-200 bg-white
+                         appearance-none
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         text-slate-900">
+                  <option value="">请选择企业</option>
+                </select>
+
+                <div class="relative">
+                  <input id="input-phone" type="text" placeholder="请输入手机号" required
+                    class="w-full h-11 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div id="login-phone-error" class="error-message-inline">请输入正确的11位手机号</div>
+                </div>
+
+                <div class="flex gap-3">
+                  <input id="input-verifi" type="text" placeholder="请输入验证码"
+                    class="flex-1 h-11 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button type="button" id="verify-btn"
+                    class="h-11 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold border border-blue-200">
+                    发送验证码
+                  </button>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <button class="h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    type="submit">登录</button>
+                </div>
+                <!-- <button class="flex-1 h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold" type="submit">登录</button> -->
+              </form>
+
+              <!-- 邮箱验证码登录 -->
+              <form id="email-form" class="mt-5 space-y-4 hidden" autocomplete="off">
+                <!-- 租户类型（可选） -->
+
+                <select id="loginCompanySelect" name="companyId" required class="w-full h-11 pl-3 pr-10 rounded-lg border border-slate-200 bg-white
+                         appearance-none
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         text-slate-900">
+                  <option value="">请选择企业</option>
+                </select>
+
+                <div class="relative">
+                  <input id="input-email" type="email" placeholder="请输入邮箱" required
+                    class="w-full h-11 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div id="login-email-error" class="error-message-inline">请输入正确的邮箱地址</div>
+                </div>
+
+                <div class="flex gap-3">
+                  <input id="email-verifi" type="text" placeholder="请输入验证码"
+                    class="flex-1 h-11 px-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button type="button" id="verify-email-btn"
+                    class="h-11 px-4 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold border border-blue-200">
+                    发送验证码
+                  </button>
+                </div>
+
+                <div class="flex flex-col gap-2">
+                  <button class="h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    type="submit">登录</button>
+                </div>
+              </form>
+
+
+
+              <!-- 协议 -->
+              <div class="mt-5 text-sm text-slate-600">
+                登录即表示您已阅读并同意
+                <a href="#" class="text-blue-600 hover:underline"
+                  onclick="LoginUI.openAgreement('service')">服务条款与隐私协议</a>
+              </div>
+
+              <!-- 其他登录方式 -->
+              <div class="mt-6">
+                <div class="flex items-center gap-3 text-xs text-slate-500">
+                  <div class="flex-1 h-px bg-slate-200"></div>
+                  <span>其他登录方式</span>
+                  <div class="flex-1 h-px bg-slate-200"></div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-8 justify-center  items-center mb-1">
+
+                  <!-- 微信扫码 -->
+                  <button id="wechat-btn" type="button"
+                    class="auth-btn group flex items-center justify-center cursor-pointer">
+                    <span class="auth-icon bg-emerald-50 border-emerald-100 group-hover:bg-emerald-100 cursor-pointer">
+                      <!-- 原 SVG 不动 -->
+                      <svg t="1753836117164" class="icon" viewBox="0 0 1254 1024" version="1.1"
+                        xmlns="http://www.w3.org/2000/svg" p-id="4340" width="23" height="23">
+                        <path
+                          d="M850.346667 308.394667a184.106667 184.106667 0 0 1 41.898666 2.986666C853.333333 131.754667 661.717333 0 443.136 0 200.533333 0 0 167.68 0 377.258667c0 122.752 65.877333 221.568 176.64 299.434666l-44.885333 134.741334 155.690666-77.866667a695.466667 695.466667 0 0 0 155.690667 20.949333 197.674667 197.674667 0 0 0 41.898667-2.986666 317.013333 317.013333 0 0 1-14.976-92.8 367.701333 367.701333 0 0 1 380.288-350.336z m-239.530667-119.765334a53.418667 53.418667 0 0 1 56.874667 56.874667 53.418667 53.418667 0 0 1-56.874667 56.874667 60.970667 60.970667 0 0 1-65.877333-56.874667 60.970667 60.970667 0 0 1 65.877333-56.874667z m-311.466667 110.933334a60.970667 60.970667 0 0 1-65.792-57.045334 60.714667 60.714667 0 0 1 65.877334-53.888 53.418667 53.418667 0 0 1 56.874666 56.874667 52.693333 52.693333 0 0 1-56.874666 53.930667z"
+                          fill="#05B959" p-id="4341"></path>
+                        <path
+                          d="M1254.528 655.701333c0-176.64-176.64-323.370667-377.258667-323.370666-212.565333 0-377.258667 143.701333-377.258666 323.370666 0 176.64 167.68 323.370667 377.258666 323.370667a699.733333 699.733333 0 0 0 134.741334-20.949333L1134.762667 1024l-32.938667-110.933333c86.826667-68.736 152.704-158.549333 152.704-257.365334z m-500.010667-56.874666a44.928 44.928 0 0 1 0-89.813334 51.584 51.584 0 0 1 56.96 44.885334c0 23.936-21.034667 44.928-56.96 44.928z m245.504 0a44.928 44.928 0 1 1 0-89.813334 51.584 51.584 0 0 1 56.874667 44.928 51.584 51.584 0 0 1-56.874667 44.885334z"
+                          fill="#05B959" p-id="4342"></path>
+                      </svg>
+                    </span>
+                    <span class="auth-text">扫码</span>
+                  </button>
+
+                  <!-- 企业微信扫码 -->
+                  <button id="workwechat-btn" type="button" class="auth-btn group flex items-center justify-center">
+                    <span class="auth-icon bg-sky-50 border-sky-100 group-hover:bg-sky-100 cursor-pointer">
+                      <svg t="1753836172111" class="icon" viewBox="0 0 1228 1024" version="1.1"
+                        xmlns="http://www.w3.org/2000/svg" p-id="6367" width="23" height="23">
+                        <path
+                          d="M798.515 795.443a16.384 16.384 0 0 0 2.048 24.986 210.125 210.125 0 0 1 64.717 126.157 68.403 68.403 0 1 0 73.114-86.016 209.92 209.92 0 0 1-116.736-65.127 16.384 16.384 0 0 0-23.143 0z"
+                          fill="#FB6500" p-id="6368"></path>
+                        <path
+                          d="M1076.224 687.104a68.198 68.198 0 0 0-19.66 41.165 209.92 209.92 0 0 1-64.922 116.94 16.384 16.384 0 1 0 24.985 20.89 209.92 209.92 0 0 1 126.157-64.717 68.403 68.403 0 1 0-66.355-114.278z"
+                          fill="#0082EF" p-id="6369"></path>
+                        <path
+                          d="M883.507 494.182a68.403 68.403 0 0 0 41.165 116.327 209.92 209.92 0 0 1 116.94 64.921 16.384 16.384 0 1 0 20.89-24.985 210.125 210.125 0 0 1-64.716-126.157 68.403 68.403 0 0 0-114.279-30.106z"
+                          fill="#2DBC00" p-id="6370"></path>
+                        <path
+                          d="M849.92 601.088l-1.229 1.229a209.715 209.715 0 0 1-128 66.97 67.994 67.994 0 0 0-30.31 114.278A68.403 68.403 0 0 0 806.707 742.4a210.125 210.125 0 0 1 65.127-116.94 16.384 16.384 0 0 0-21.914-24.372z"
+                          fill="#FFCC00" p-id="6371"></path>
+                        <path
+                          d="M436.634 10.65C313.958 24.166 202.752 76.595 122.88 158.515c-31.744 32.359-57.549 68.813-76.595 107.725a375.194 375.194 0 0 0 26.419 378.88c21.709 32.768 57.344 73.728 89.907 102.81l-14.745 115.916-1.639 4.916c-0.41 1.433-0.41 3.072-0.614 4.505l-0.41 3.687 0.41 3.686a37.274 37.274 0 0 0 56.115 28.877h0.614l2.253-1.639 35.226-17.612 105.062-52.839a542.31 542.31 0 0 0 153.6 21.095A550.912 550.912 0 0 0 686.9 825.754a68.198 68.198 0 0 1-46.49-71.476 462.643 462.643 0 0 1-193.74 19.252l-10.445-1.434a468.378 468.378 0 0 1-69.632-14.54 47.514 47.514 0 0 0-37.274 3.89l-2.867 1.434-86.425 50.79-3.687 2.253c-2.048 1.229-3.072 1.639-4.096 1.639a5.94 5.94 0 0 1-5.53-6.144l3.277-13.312 3.892-14.541 6.144-23.962 7.168-26.624a36.25 36.25 0 0 0-13.108-40.345 377.856 377.856 0 0 1-87.244-90.932 295.526 295.526 0 0 1-21.3-298.598c15.565-31.13 36.045-60.006 61.44-86.016 65.536-67.584 157.696-110.592 259.687-121.651a483.738 483.738 0 0 1 106.086 0c101.376 11.673 193.127 55.296 258.253 122.47 25.19 26.01 45.67 55.296 60.826 86.426 20.275 41.37 30.515 85.197 30.515 130.048 0 4.71-0.41 9.42-0.615 13.926a68.198 68.198 0 0 1 83.968 9.83l3.072 3.687a373.146 373.146 0 0 0-37.273-194.15 418.202 418.202 0 0 0-75.776-107.725A514.048 514.048 0 0 0 563.2 11.059a576.102 576.102 0 0 0-126.566-0.41z"
+                          fill="#0082EF" p-id="6372"></path>
+                      </svg>
+                    </span>
+                    <span class="auth-text">扫码</span>
+                  </button>
+
+                  <!-- 邮箱 -->
+                  <button id="email-icon-btn" type="button" class="auth-btn group flex items-center justify-center">
+                    <span class="auth-icon bg-slate-50 border-slate-100 group-hover:bg-slate-100 cursor-pointer">
+
+                      <svg t="1756175315793" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                        xmlns="http://www.w3.org/2000/svg" p-id="4348" width="23" height="23">
+                        <path
+                          d="M820.409449 797.228346q0 25.19685-10.07874 46.866142t-27.716535 38.299213-41.322835 26.204724-50.897638 9.574803l-357.795276 0q-27.212598 0-50.897638-9.574803t-41.322835-26.204724-27.716535-38.299213-10.07874-46.866142l0-675.275591q0-25.19685 10.07874-47.370079t27.716535-38.80315 41.322835-26.204724 50.897638-9.574803l357.795276 0q27.212598 0 50.897638 9.574803t41.322835 26.204724 27.716535 38.80315 10.07874 47.370079l0 675.275591zM738.771654 170.330709l-455.559055 0 0 577.511811 455.559055 0 0-577.511811zM510.992126 776.062992q-21.165354 0-36.787402 15.11811t-15.622047 37.291339q0 21.165354 15.622047 36.787402t36.787402 15.622047q22.173228 0 37.291339-15.622047t15.11811-36.787402q0-22.173228-15.11811-37.291339t-37.291339-15.11811zM591.622047 84.661417q0-8.062992-5.03937-12.598425t-11.086614-4.535433l-128 0q-5.03937 0-10.582677 4.535433t-5.543307 12.598425 5.03937 12.598425 11.086614 4.535433l128 0q6.047244 0 11.086614-4.535433t5.03937-12.598425z"
+                          p-id="4349"></path>
+                      </svg> </span>
+                    <span class="auth-text">邮箱</span>
+                  </button>
+
+                  <!-- 手机 -->
+                  <button id="phone-icon-btn" type="button"
+                    class="auth-btn group hidden flex items-center justify-center">
+                    <span class="auth-icon bg-slate-50 border-slate-100 group-hover:bg-slate-100 cursor-pointer">
+                      <svg t="1756175315793" class="icon" viewBox="0 0 1024 1024" version="1.1"
+                        xmlns="http://www.w3.org/2000/svg" p-id="4348" width="23" height="23">
+                        <path
+                          d="M820.409449 797.228346q0 25.19685-10.07874 46.866142t-27.716535 38.299213-41.322835 26.204724-50.897638 9.574803l-357.795276 0q-27.212598 0-50.897638-9.574803t-41.322835-26.204724-27.716535-38.299213-10.07874-46.866142l0-675.275591q0-25.19685 10.07874-47.370079t27.716535-38.80315 41.322835-26.204724 50.897638-9.574803l357.795276 0q27.212598 0 50.897638 9.574803t41.322835 26.204724 27.716535 38.80315 10.07874 47.370079l0 675.275591zM738.771654 170.330709l-455.559055 0 0 577.511811 455.559055 0 0-577.511811zM510.992126 776.062992q-21.165354 0-36.787402 15.11811t-15.622047 37.291339q0 21.165354 15.622047 36.787402t36.787402 15.622047q22.173228 0 37.291339-15.622047t15.11811-36.787402q0-22.173228-15.11811-37.291339t-37.291339-15.11811zM591.622047 84.661417q0-8.062992-5.03937-12.598425t-11.086614-4.535433l-128 0q-5.03937 0-10.582677 4.535433t-5.543307 12.598425 5.03937 12.598425 11.086614 4.535433l128 0q6.047244 0 11.086614-4.535433t5.03937-12.598425z"
+                          p-id="4349"></path>
+                      </svg>
+                    </span>
+                    <span class="auth-text">手机</span>
+                  </button>
+
+                </div>
+
+
+                <div id="login-msg" class="mt-4 text-sm text-red-600 min-h-[20px]"></div>
+              </div>
+
+
+            </div>
+            <!-- ========== 注册面板 ========== -->
+            <div id="panel-register" class="hidden">
+              <div class="text-sm text-slate-600 mb-3">
+                请填写账号信息进行注册
+              </div>
+              <form id="registerForm" class="space-y-3" autocomplete="off">
+                <div class="relative">
+                  <select id="reg-company" name="company" required class="w-full h-10 pl-3 pr-10 rounded-lg border border-slate-200 bg-white text-sm
+                                 appearance-none
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                 text-slate-900">
+                    <option value="">请选择企业</option>
+                  </select>
+                  <!-- 自定义下拉箭头 -->
+                  <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+                    ▼
+                  </span>
+                </div>
+                <div id="reg-company-error" class="text-sm text-red-600 hidden"></div>
+
+                <div>
+                  <label class="block text-xs text-slate-700 mb-1">账号</label>
+                  <input type="text" id="reg-username" name="username" required placeholder="3-20个字符，字母、数字、下划线"
+                    class="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div id="reg-username-error" class="text-sm text-red-600 hidden"></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-700 mb-1">手机号</label>
+                    <input type="tel" id="reg-phone" name="phone" required placeholder="请输入手机号"
+                      class="w-full h-10 px-3 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <div id="reg-phone-error" class="text-sm text-red-600 hidden"></div>
+                  </div>
+                  <div>
+                    <label class="block text-xs text-slate-700 mb-1">验证码</label>
+                    <div class="flex gap-2">
+                      <input type="text" id="reg-code" name="code" required placeholder="验证码"
+                        class="flex-1 h-10 px-3 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <button type="button" id="reg-get-code-btn"
+                        class="h-10 px-3 text-xs rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 whitespace-nowrap">
+                        获取验证码
+                      </button>
+                    </div>
+                    <div id="reg-code-error" class="text-sm text-red-600 hidden"></div>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs text-slate-700 mb-1">密码</label>
+                    <div class="password-wrapper">
+                      <input type="password" id="reg-password" name="password" required autocomplete="new-password"
+                        placeholder="12位，含大小写、数字、符号"
+                        class="w-full h-10 px-3 pr-10 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <button type="button" class="password-toggle-btn"
+                        onclick="LoginUI.toggleRegPassword('reg-password', event)">
+                        <svg t="1754106405019" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="18"
+                          height="18">
+                          <path
+                            d="M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066666 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z"
+                            fill="#111827"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div id="reg-password-error" class="text-sm text-red-600 hidden"></div>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs text-slate-700 mb-1">确认密码</label>
+                    <div class="password-wrapper">
+                      <input type="password" id="reg-confirmPassword" name="confirmPassword" required auto
+                        complete="new-password" placeholder="请确认密码"
+                        class="w-full h-10 px-3 pr-10 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <button type="button" class="password-toggle-btn"
+                        onclick="LoginUI.toggleRegPassword('reg-confirmPassword', event)">
+                        <svg t="1754106405019" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="18"
+                          height="18">
+                          <path
+                            d="M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066666 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z"
+                            fill="#111827"></path>
+                        </svg>
+                      </button>
+                    </div>
+                    <div id="reg-confirmPassword-error" class="text-sm text-red-600 hidden"></div>
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-1">
+                  <button type="submit"
+                    class="h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm">
+                    注册
+                  </button>
+                  <div id="register-error" class="text-center text-sm text-red-600 hidden"></div>
+                </div>
+
+                <div class="text-center text-sm text-slate-600">
+                  已有账户？
+                  <a href="javascript:void(0)" class="text-blue-600 hover:underline"
+                    onclick="UI.switchAuth('login')">返回登录</a>
+                </div>
+              </form>
+            </div>
+          </div>
+          <div class="px-6 pt-6 text-xs text-slate-400 flex items-center justify-center md:justify-start">
+            <span>© 领码科技 · SPARK 融合平台</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 登录扫码弹窗（保持你原结构） -->
+  <div id="qr-modal-mask" class="modal-mask" tabindex="-1">
+    <div class="modal-qr-box" role="dialog" aria-modal="true">
+      <button id="modal-close" class="modal-close" aria-label="关闭弹层">&times;</button>
+      <div class="text-center text-sm font-semibold tracking-wider text-sky-600" id="modal-qr-title">扫码登录</div>
+
+      <div class="modal-qrcode-pic">
+        <div id="modal-qrcode-img"></div>
+
+        <!-- 修复：原来 SVG path 有破损，这里换一个稳定的 loading -->
+        <div id="modal-qr-placeholder" class="modal-qr-placeholder">
+          <svg class="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" fill="none" stroke="#93c5fd" stroke-width="4" opacity="0.4"></circle>
+            <path d="M22 12a10 10 0 0 0-10-10" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round">
+            </path>
+          </svg>
+        </div>
+      </div>
+
+      <div class="text-center text-sm text-sky-600" id="modal-qr-tip"></div>
+    </div>
+  </div>
+
+  <script>
+
+
+    (function () {
+      // ⚠️  已弃用：旧的多步骤企业注册逻辑
+      // 新的简化用户注册已替换此逻辑（见下方 initRegisterForm 函数）
+      // 保留此代码块以供参考，但不执行任何操作
+      return;
+
+      // 下方代码已禁用
+      const form = document.getElementById('registerForm');
+      if (!form) return; // 如果registerForm不存在，直接返回
+
+      const stepEls = Array.from(form.querySelectorAll('[data-step]'));
+      const steps = [
+        document.getElementById('step1'),
+        document.getElementById('step2'),
+        document.getElementById('step3')
+      ];
+
+      const dots = [
+        document.getElementById('stepDot1'),
+        document.getElementById('stepDot2'),
+        document.getElementById('stepDot3')
+      ];
+
+      const pcStepper = document.getElementById('pcStepper');
+      const pcNav = document.getElementById('pcNav');
+      const prevBtn = document.getElementById('prevStepBtn');
+      const nextBtn = document.getElementById('nextStepBtn');
+      const submitBtn = document.getElementById('submitBtn');
+
+      const mqPc = window.matchMedia('(min-width: 768px)'); // Tailwind md
+      let current = 0;
+
+      function setDotState(i, state) {
+        const el = dots[i];
+        if (!el) return;
+        el.classList.remove('bg-blue-600', 'text-white', 'bg-slate-200', 'text-slate-700', 'bg-emerald-600');
+        if (state === 'active') el.classList.add('bg-blue-600', 'text-white');
+        else if (state === 'done') el.classList.add('bg-emerald-600', 'text-white');
+        else el.classList.add('bg-slate-200', 'text-slate-700');
+      }
+
+      // 密码验证函数：检查是否包含字母、数字、特殊字符，且长度不少于12位
+      function validatePassword(password) {
+        if (!password || password.length < 12) {
+          return '密码长度不能少于12位';
+        }
+
+        const hasLetter = /[a-zA-Z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+        if (!hasLetter) {
+          return '密码必须包含字母';
+        }
+        if (!hasNumber) {
+          return '密码必须包含数字';
+        }
+        if (!hasSpecial) {
+          return '密码必须包含特殊字符';
+        }
+
+        return null; // 验证通过
+      }
+
+      function validateStep(index) {
+        const scope = steps[index];
+        if (!scope) return true;
+
+        const requiredEls = scope.querySelectorAll('input[required], select[required], textarea[required]');
+        for (const el of requiredEls) {
+          if (el.classList.contains('hidden') || el.offsetParent === null) continue;
+          if (!el.checkValidity()) {
+            el.focus();
+            return false;
+          }
+        }
+
+        if (index === 0) {
+          const p = document.getElementById('password');
+          const cp = document.getElementById('confirmPassword');
+          const pBox = document.getElementById('password-error');
+          const cpBox = document.getElementById('confirm-password-error');
+
+          // 验证密码强度
+          if (p && p.value) {
+            const passwordError = validatePassword(p.value);
+            if (passwordError) {
+              if (pBox) {
+                pBox.textContent = passwordError;
+                pBox.classList.remove('hidden');
+              }
+              p.focus();
+              return false;
+            } else {
+              pBox && pBox.classList.add('hidden');
+            }
+          }
+
+          // 验证两次密码是否一致
+          if (p && cp && p.value && cp.value && p.value !== cp.value) {
+            if (cpBox) {
+              cpBox.textContent = '两次输入的密码不一致';
+              cpBox.classList.remove('hidden');
+            }
+            cp.focus();
+            return false;
+          } else {
+            cpBox && cpBox.classList.add('hidden');
+          }
+        }
+
+        if (index === 1) {
+          // 验证第二步：企业信息
+          const companyName = document.getElementById('companyName');
+          const companyShortName = document.getElementById('companyShortName');
+          const companyEnglishName = document.getElementById('companyEnglishName');
+          const companyEnglishShortName = document.getElementById('companyEnglishShortName');
+          const contactPerson = document.getElementById('contactPerson');
+
+          // 验证企业名称（中文）
+          if (companyName && companyName.value.trim()) {
+            if (!/^[\u4e00-\u9fa5]+$/.test(companyName.value.trim())) {
+              const errBox = document.getElementById('companyName-error');
+              if (errBox) {
+                errBox.textContent = '企业名称只能包含中文';
+                errBox.classList.remove('hidden');
+              }
+              companyName.focus();
+              return false;
+            }
+          }
+
+          // 验证企业简称（中文）
+          if (companyShortName && companyShortName.value.trim()) {
+            if (!/^[\u4e00-\u9fa5]+$/.test(companyShortName.value.trim())) {
+              const errBox = document.getElementById('companyShortName-error');
+              if (errBox) {
+                errBox.textContent = '企业简称只能包含中文';
+                errBox.classList.remove('hidden');
+              }
+              companyShortName.focus();
+              return false;
+            }
+          }
+
+          // 验证企业英文名称
+          if (companyEnglishName && companyEnglishName.value.trim()) {
+            if (!/^[a-zA-Z\s]+$/.test(companyEnglishName.value.trim())) {
+              const errBox = document.getElementById('companyEnglishName-error');
+              if (errBox) {
+                errBox.textContent = '企业英文名称只能包含英文字母';
+                errBox.classList.remove('hidden');
+              }
+              companyEnglishName.focus();
+              return false;
+            }
+          }
+
+          // 验证企业英文简称
+          if (companyEnglishShortName && companyEnglishShortName.value.trim()) {
+            if (!/^[a-zA-Z\s]+$/.test(companyEnglishShortName.value.trim())) {
+              const errBox = document.getElementById('companyEnglishShortName-error');
+              if (errBox) {
+                errBox.textContent = '企业英文简称只能包含英文字母';
+                errBox.classList.remove('hidden');
+              }
+              companyEnglishShortName.focus();
+              return false;
+            }
+          }
+
+          // 清除所有错误提示（验证通过）
+          ['companyName-error', 'companyShortName-error', 'companyEnglishName-error', 'companyEnglishShortName-error', 'contactPerson-error'].forEach(id => {
+            const el = document.getElementById(id);
+            el && el.classList.add('hidden');
+          });
+        }
+
+        if (index === 2) {
+          const verifyType = form.querySelector('input[name="verifyType"]:checked')?.value;
+          const phone = document.getElementById('phone');
+          const email = document.getElementById('email');
+          const contactErr = document.getElementById('contact-error');
+
+          if (verifyType === 'phone') {
+            if (!phone?.value?.trim()) {
+              if (contactErr) {
+                contactErr.textContent = '请输入手机号码';
+                contactErr.classList.remove('hidden');
+              }
+              phone?.focus();
+              return false;
+            }
+          } else {
+            if (!email?.value?.trim()) {
+              if (contactErr) {
+                contactErr.textContent = '请输入邮箱地址';
+                contactErr.classList.remove('hidden');
+              }
+              email?.focus();
+              return false;
+            }
+          }
+          contactErr && contactErr.classList.add('hidden');
+        }
+
+        return true;
+      }
+
+      // 手机/邮箱切换：同步 required，避免校验误伤
+      function renderVerifyType() {
+        const v = form.querySelector('input[name="verifyType"]:checked')?.value || 'phone';
+        const phoneLabel = form.querySelector('.phone-label');
+        const phoneInput = form.querySelector('.phone-input');
+        const emailLabel = form.querySelector('.email-label');
+        const emailInput = form.querySelector('.email-input');
+
+        if (v === 'phone') {
+          phoneLabel?.classList.remove('hidden');
+          phoneInput?.classList.remove('hidden');
+          emailLabel?.classList.add('hidden');
+          emailInput?.classList.add('hidden');
+
+          phoneInput?.setAttribute('required', 'required');
+          emailInput?.removeAttribute('required');
+        } else {
+          emailLabel?.classList.remove('hidden');
+          emailInput?.classList.remove('hidden');
+          phoneLabel?.classList.add('hidden');
+          phoneInput?.classList.add('hidden');
+
+          emailInput?.setAttribute('required', 'required');
+          phoneInput?.removeAttribute('required');
+        }
+
+        const contactErr = document.getElementById('contact-error');
+        contactErr && contactErr.classList.add('hidden');
+      }
+      form.querySelectorAll('input[name="verifyType"]').forEach(r => r.addEventListener('change', renderVerifyType));
+
+      // ====== 核心：根据屏幕切换模式 ======
+      function enterMobileMode() {
+        // 移动：全部展开，不分步
+        stepEls.forEach(el => el.classList.remove('hidden'));
+        pcStepper && pcStepper.classList.add('hidden');
+        pcNav && pcNav.classList.add('hidden');
+
+        // 移动端提交按钮一直显示
+        submitBtn && submitBtn.classList.remove('hidden');
+      }
+
+      function enterPcStepMode() {
+        // PC：启用分步
+        pcStepper && pcStepper.classList.remove('hidden');
+        pcNav && pcNav.classList.remove('hidden');
+
+        stepEls.forEach((el, i) => el.classList.toggle('hidden', i !== current));
+
+        for (let i = 0; i < 3; i++) {
+          if (i < current) setDotState(i, 'done');
+          else if (i === current) setDotState(i, 'active');
+          else setDotState(i, 'todo');
+        }
+
+        prevBtn?.classList.toggle('hidden', current === 0);
+        nextBtn?.classList.toggle('hidden', current === 2);
+
+        // PC：只有第 3 步显示提交按钮
+        submitBtn && submitBtn.classList.toggle('hidden', current !== 2);
+      }
+
+      function render() {
+        if (mqPc.matches) enterPcStepMode();
+        else enterMobileMode();
+      }
+
+      prevBtn?.addEventListener('click', function () {
+        if (!mqPc.matches) return;
+        if (current > 0) {
+          current--;
+          render();
+        }
+      });
+
+      nextBtn?.addEventListener('click', function () {
+        if (!mqPc.matches) return;
+        if (!validateStep(current)) return;
+        if (current < 2) {
+          current++;
+          render();
+        }
+      });
+
+      // 提交：PC 必须在第3步；移动端正常提交
+      form.addEventListener('submit', function (e) {
+        if (mqPc.matches) {
+          if (current !== 2) {
+            e.preventDefault();
+            return;
+          }
+          if (!validateStep(2)) {
+            e.preventDefault();
+            return;
+          }
+        } else {
+          // 移动端可选：全表单 required 本身会校验；你也可以加全量校验
+        }
+        // ✅ 你的原提交逻辑（ajax / signalr / layui）放你原来的位置即可
+      });
+
+      // 监听屏幕变化（横竖屏/窗口缩放）
+      mqPc.addEventListener('change', function () {
+        // 切到PC时，默认从第一步开始更直观
+        if (mqPc.matches) current = 0;
+        render();
+      });
+
+      // init
+      renderVerifyType();
+      render();
+    })();
+    /*************************************************************
+     * UI：登录/注册总切换（新增：只做结构组织，不改变业务）
+     *************************************************************/
+    const UI = {
+      switchAuth(mode) {
+        const isLogin = mode === 'login'
+        document.getElementById('panel-login').classList.toggle('hidden', !isLogin)
+        document.getElementById('panel-register').classList.toggle('hidden', isLogin)
+
+        const btnLogin = document.getElementById('tab-auth-login')
+        const btnReg = document.getElementById('tab-auth-register')
+
+        if (isLogin) {
+          btnLogin.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-white shadow-sm text-blue-700'
+          btnReg.className = 'px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900'
+          setTimeout(() => document.getElementById('input-username')?.focus(), 60)
+        } else {
+          btnReg.className = 'px-4 py-2 rounded-lg text-sm font-medium bg-white shadow-sm text-blue-700'
+          btnLogin.className = 'px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900'
+          setTimeout(() => document.getElementById('username')?.focus(), 60)
+        }
+      }
+    }
+
+    // 立即暴露UI对象到window，确保HTML onclick可以访问
+    window.UI = UI
+
+    /*************************************************************
+     * 登录区域：保持你的原逻辑（只做“模块化/冲突修复”）
+     *************************************************************/
+    const LoginUI = (() => {
+      const loginForm = document.getElementById('login-form')
+      const phoneForm = document.getElementById('phone-form')
+      const emailForm = document.getElementById('email-form')
+      const loginMsg = document.getElementById('login-msg')
+
+      const inputPhone = document.getElementById('input-phone')
+      const phoneError = document.getElementById('login-phone-error')
+      const verifyBtn = document.getElementById('verify-btn')
+
+      const emailIconBtn = document.getElementById('email-icon-btn')
+      const phoneIconBtn = document.getElementById('phone-icon-btn')
+
+      const emailInput = document.getElementById('input-email')
+      const emailError = document.getElementById('login-email-error')
+      const verifyInput = document.getElementById('email-verifi')
+      const verifyEmailBtn = document.getElementById('verify-email-btn')
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+      // modal
+      const modalMask = document.getElementById('qr-modal-mask')
+      const modalClose = document.getElementById('modal-close')
+      const modalQrTitle = document.getElementById('modal-qr-title')
+      const modalQrPic = document.getElementById('modal-qrcode-img')
+      const modalQrPlaceholder = document.getElementById('modal-qr-placeholder')
+      const modalQrTip = document.getElementById('modal-qr-tip')
+
+      function showInline(el, show, msg) {
+        if (!el) return
+        if (typeof msg === 'string') el.textContent = msg
+        el.style.display = show ? 'block' : 'none'
+      }
+
+      function validatePhone(phone) {
+        return /^[0-9]{11}$/.test(phone)
+      }
+
+      function getEnt(url) {
+        if (typeof url !== 'string' || url.trim() === '') return null
+        try {
+          const protocolIndex = url.indexOf('://')
+          const remaining = protocolIndex === -1 ? url : url.slice(protocolIndex + 3)
+          const firstSlashIndex = remaining.indexOf('/')
+          if (firstSlashIndex === -1) return null
+          const pathAfterDomain = remaining.slice(firstSlashIndex + 1)
+          const pathSegments = pathAfterDomain.split('/')
+          for (const segment of pathSegments) if (segment.trim() !== '') return segment
+          return null
+        } catch (error) {
+          return null
+        }
+      }
+
+      function switchLoginTab(mode) {
+        const tabAccount = document.getElementById('tab-account')
+        const tabPhone = document.getElementById('tab-phone')
+
+        if (mode === 'account') {
+          tabAccount.className = 'text-sm font-semibold pb-2 border-b-2 border-blue-600 text-blue-700'
+          tabPhone.className = 'text-sm font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800'
+          tabPhone.textContent = '验证码登录'
+
+          loginForm.classList.remove('hidden')
+          phoneForm.classList.add('hidden')
+          emailForm.classList.add('hidden')
+
+          emailIconBtn.classList.remove('hidden')
+          phoneIconBtn.classList.add('hidden')
+        } else {
+          tabPhone.className = 'text-sm font-semibold pb-2 border-b-2 border-blue-600 text-blue-700'
+          tabAccount.className = 'text-sm font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800'
+          tabPhone.textContent = '验证码登录'
+
+          loginForm.classList.add('hidden')
+          phoneForm.classList.remove('hidden')
+          emailForm.classList.add('hidden')
+
+          emailIconBtn.classList.remove('hidden')
+          phoneIconBtn.classList.add('hidden')
+        }
+      }
+
+      function togglePassword() {
+        const input = document.getElementById('input-password')
+        const toggle = document.querySelector('.toggle-visibility')
+        if (!input || !toggle) return
+
+        if (input.type === 'password') {
+          input.type = 'text'
+          toggle.innerHTML = '<svg t="1754106438118" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M515.2 224c-307.2 0-492.8 313.6-492.8 313.6s214.4 304 492.8 304 492.8-304 492.8-304S822.4 224 515.2 224zM832 652.8c-102.4 86.4-211.2 140.8-320 140.8s-217.6-51.2-320-140.8c-35.2-32-70.4-64-99.2-99.2-6.4-6.4-9.6-12.8-16-19.2 3.2-6.4 9.6-12.8 12.8-19.2 25.6-35.2 57.6-70.4 92.8-102.4 99.2-89.6 208-144 329.6-144s230.4 54.4 329.6 144c35.2 32 64 67.2 92.8 102.4 3.2 6.4 9.6 12.8 12.8 19.2-3.2 6.4-9.6 12.8-16 19.2C902.4 585.6 870.4 620.8 832 652.8z" fill="#111827"></path><path d="M512 345.6c-96 0-169.6 76.8-169.6 169.6 0 96 76.8 169.6 169.6 169.6 96 0 169.6-76.8 169.6-169.6C681.6 422.4 604.8 345.6 512 345.6zM512 640c-67.2 0-121.6-54.4-121.6-121.6 0-67.2 54.4-121.6 121.6-121.6 67.2 0 121.6 54.4 121.6 121.6C633.6 582.4 579.2 640 512 640z" fill="#111827"></path></svg>'
+        } else {
+          input.type = 'password'
+          toggle.innerHTML = '<svg t="1754106405019" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg"><path d="M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066667 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z" fill="#111827"></path></svg>'
+        }
+      }
+
+
+
+      function openAgreement() {
+        window.location.href = `${window.location.protocol}//${window.location.host}/NewApp/UserLoginManagement/protocol.html`
+      }
+
+      function isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      }
+
+      function getReturnUrl() {
+        const urlParams = new URLSearchParams(window.location.search)
+        return urlParams.get('returnUrl')
+      }
+
+      function toRedirect() {
+        const returnUrl = getReturnUrl()
+        const userinfoT = QB.GetUserInfo();
+        if (userinfoT.lingma_sys_ent !== userinfoT.platform) {
+          window.location.href = window.encodeURI(QB.GetEntFullPath("PortalWeb/PersonalSystem.html"))
+          return
+        }
+        if (isMobile()) {
+          window.location.href = window.encodeURI(QB.GetEntFullPath("PortalWeb/PersonalSystemMoblie.html"))
+          return
+        }
+        window.location.href = window.encodeURI(QB.GetEntFullPath("PortalWeb/PersonalSystem.html"))
+
+      }
+
+      function RecordMyUserInfo(noCheck) {
+        return new Promise((resolve, reject) => {
+          QB.CreateRequest(webApiRoot + 'LoginAuthority/GetUserInfo', 'GET', null, true)
+            .then((data) => {
+              let jsonData = data.data
+              if (jsonData.Type === 'success') {
+                window.sessionStorage.setItem(userinfoTokenKey, JSON.stringify(jsonData.Result))
+                resolve()
+              } else reject(jsonData.Message)
+            })
+        })
+      }
+
+      function loginFunctionByCode(ThirdPartyAccount, code, type = "MOBILE") {
+        let entRowId;
+        let entName;
+        if (type === "MOBILE") {
+          entRowId = document.getElementById('loginCompanySelect2').value; // 这里是 rowid
+        } else if (type === "EMAIL") {
+          entRowId = document.getElementById('loginCompanySelect').value; // 这里是 rowid
+        }
+        if (entRowId == null || entRowId === "") {
+          loginMsg.textContent = "请选择企业！"
+          return;
+        }
+
+        // 从 option 的 data-entName 属性获取 entName
+        const select = type === "MOBILE" ? document.getElementById('loginCompanySelect2') : document.getElementById('loginCompanySelect');
+        const selectedOption = select.options[select.selectedIndex];
+        entName = selectedOption.dataset.entName || selectedOption.textContent;
+
+        const submitInfo = {
+          ent: entName,  // 使用 entName 调用 API
+          type: type,
+          account: ThirdPartyAccount,
+          scene: "LOGIN",
+          code: code,
+        }
+
+
+
+
+        QB.CreateRequest(webApiRoot + 'LoginAuthority/UserLoginWithCode ', 'POST', submitInfo)
+          .then(res => {
+            const result = res.data
+            if (result.Code == "200" && result.Type == "success") {
+              window.localStorage.setItem(accessTokenKey, JSON.stringify(result.Result.token.replace("Bearer ", "")))
+              window.localStorage.setItem(refreshAccessTokenKey, JSON.stringify(result.Result.refreshToken.replace("Bearer ", "")))
+              window.sessionStorage.setItem(accessTokenKey, JSON.stringify(result.Result.token.replace("Bearer ", "")))
+              window.sessionStorage.setItem(refreshAccessTokenKey, JSON.stringify(result.Result.refreshToken.replace("Bearer ", "")))
+              window.sessionStorage.removeItem(userinfoTokenKey)
+              RecordMyUserInfo(true).then(() => toRedirect())
+            }
+          })
+      }
+
+      // ===== 第三方扫码登录（微信 / 企业微信）=====
+      let wwLoginPanel = null
+      const WECHAT_WEB_APPID = window.WECHAT_WEB_APPID || 'wx2871aa287b547c7b'
+      const WXWORK_APPID = window.WXWORK_APPID || 'ww799bdfa25307a991'
+      const WXWORK_AGENTID = window.WXWORK_AGENTID || '1000025'
+      const THIRD_PARTY_LOGIN_API = webApiRoot + 'thirdParty/login'
+      let thirdPartyLoginSubmitting = false
+      const submittedThirdPartyCodeMap = Object.create(null)
+
+      function normalizeEntName(ent) {
+        if (!ent) return ''
+        const raw = String(ent).trim()
+        if (!raw) return ''
+        const matched = (window.enterpriseList || []).find(item => {
+          const shortName = String(item.ShortName || '').trim()
+          return shortName && shortName.toLowerCase() === raw.toLowerCase()
+        })
+        return matched?.ShortName || raw
+      }
+
+      function getPathEntName() {
+        const segments = window.location.pathname.split('/').filter(Boolean)
+        const first = segments[0]
+        if (!first) return ''
+        if (['auth', 'api', 'UserLoginManagement', 'PortalWeb'].includes(first)) return ''
+        return normalizeEntName(first)
+      }
+
+      function getHostEntName() {
+        const host = window.location.hostname || ''
+        if (!host || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return ''
+        const first = host.split('.')[0]
+        if (!first || ['www', 'erp', 'spark'].includes(first)) return ''
+        return normalizeEntName(first)
+      }
+
+      function getSelectedEntName() {
+        const selectIds = ['loginCompanySelect1', 'loginCompanySelect2', 'loginCompanySelect', 'reg-company']
+        for (const id of selectIds) {
+          const select = document.getElementById(id)
+          if (!select || !select.value) continue
+          const selectedOption = select.options[select.selectedIndex]
+          const entName = selectedOption?.dataset?.entName || selectedOption?.getAttribute?.('data-ent-name') || ''
+          if (entName) return normalizeEntName(entName)
+        }
+        return ''
+      }
+
+      function getCurrentEntName() {
+        const selectedEnt = getSelectedEntName()
+        if (selectedEnt) return selectedEnt
+
+        const urlParams = new URLSearchParams(window.location.search)
+        const entParam = urlParams.get('ent') || urlParams.get('entName') || urlParams.get('entShortName')
+        if (entParam) return normalizeEntName(decodeURIComponent(entParam))
+
+        const entIdParam = urlParams.get('entid')
+        if (entIdParam && Array.isArray(window.enterpriseList)) {
+          const matched = window.enterpriseList.find(item => String(item.rowid) === String(decodeURIComponent(entIdParam)))
+          if (matched?.ShortName) return normalizeEntName(matched.ShortName)
+        }
+
+        return getPathEntName() || getHostEntName()
+      }
+
+      function buildThirdPartyLoginUrl(params) {
+        const url = new URL(THIRD_PARTY_LOGIN_API, window.location.origin)
+        Object.keys(params || {}).forEach((key) => {
+          const value = params[key]
+          if (value !== undefined && value !== null && value !== '') {
+            url.searchParams.set(key, value)
+          }
+        })
+        return url.toString()
+      }
+
+      function createThirdPartyState(type, ent) {
+        const state = [type, ent, Date.now(), Math.random().toString(36).slice(2)].join('_')
+        window.sessionStorage.setItem('third-party-login-state', state)
+        return state
+      }
+
+
+      function buildWechatWebCallbackUrl(ent, loginType) {
+        const callbackUrl = new URL(window.location.href)
+        callbackUrl.search = ''
+        callbackUrl.hash = ''
+        callbackUrl.searchParams.set('wechat_callback', '1')
+        callbackUrl.searchParams.set('ent', ent)
+        callbackUrl.searchParams.set('type', loginType)
+        return callbackUrl.toString()
+      }
+
+      function isWechatWebCallbackPage() {
+        const params = new URLSearchParams(window.location.search)
+        return params.get('wechat_callback') === '1'
+      }
+
+      function setQrContainerMode(enable) {
+        const box = modalQrPic?.closest?.('.modal-qrcode-pic')
+        if (!box) return
+        box.classList.toggle('third-party-sdk-mode', !!enable)
+      }
+
+      function saveLoginTokens(payload) {
+        const token = payload?.token || payload?.accessToken || payload?.Token
+        const refreshToken = payload?.refreshToken || payload?.refresh_access_token || payload?.refreshAccessToken
+        if (!token) return false
+
+        const normalizedToken = String(token).replace('Bearer ', '')
+        window.localStorage.setItem(accessTokenKey, JSON.stringify(normalizedToken))
+        window.sessionStorage.setItem(accessTokenKey, JSON.stringify(normalizedToken))
+
+        if (refreshToken) {
+          const normalizedRefreshToken = String(refreshToken).replace('Bearer ', '')
+          window.localStorage.setItem(refreshAccessTokenKey, JSON.stringify(normalizedRefreshToken))
+          window.sessionStorage.setItem(refreshAccessTokenKey, JSON.stringify(normalizedRefreshToken))
+        }
+
+        window.sessionStorage.removeItem(userinfoTokenKey)
+        return true
+      }
+
+      function redirectToBindingPage(payload, loginType, fallbackEnt) {
+        const ent = normalizeEntName(payload?.ent || fallbackEnt || getCurrentEntName())
+        const token = payload?.token || payload?.bindToken
+        const type = payload?.type || loginType
+
+        if (!ent) {
+          loginMsg.textContent = '绑定失败：未匹配到企业，请先选择企业后重试'
+          return
+        }
+        if (!token) {
+          loginMsg.textContent = '绑定失败：接口未返回临时 token'
+          return
+        }
+
+        const params = new URLSearchParams({
+          isBound: 'true',
+          type,
+          token
+        })
+        const basePath = `${window.location.origin}/${encodeURIComponent(ent)}/UserLoginManagement/AccountBinding.html`
+        window.location.href = `${basePath}?${params.toString()}`
+      }
+
+      function unwrapThirdPartyResult(response) {
+        const body = response?.data ?? response
+        if (!body) return null
+        if (body.Code !== undefined || body.Type !== undefined) {
+          if (String(body.Code) === '200' && body.Type === 'success') return body.Result || {}
+          throw new Error(body.Message || '第三方登录失败')
+        }
+        return body.Result || body
+      }
+
+      async function handleThirdPartyLoginPayload(payload, loginType, fallbackEnt) {
+        if (!payload) {
+          loginMsg.textContent = '登录失败：接口未返回数据'
+          return
+        }
+
+        // 后端新协议：isBound=true 表示当前第三方账号需要绑定本系统账号
+        if (payload.isBound === true || payload.bindings === true) {
+          redirectToBindingPage(payload, loginType, fallbackEnt)
+          return
+        }
+
+        if (saveLoginTokens(payload)) {
+          await RecordMyUserInfo(true)
+          toRedirect()
+          return
+        }
+
+        loginMsg.textContent = '登录失败：未获取到登录 token'
+      }
+
+      function openQrModal(type) {
+        const isWechat = type === 'wechat'
+        const loginType = isWechat ? 'WECHAT_WEB' : 'WECHAT_CORP_WEB'
+        const ent = getCurrentEntName()
+        const scene = isWechat ? '微信扫码' : '企业微信扫码'
+        const tip = isWechat ? '请使用微信扫一扫二维码登录' : '请使用企业微信扫一扫二维码登录'
+
+        if (!ent) {
+          loginMsg.textContent = '请先选择企业后再扫码登录'
+          return
+        }
+
+        modalQrTitle.textContent = scene
+        modalQrTip.textContent = tip
+        modalQrPic.innerHTML = ''
+        modalQrPic.style.display = 'none'
+        modalQrPlaceholder.style.display = ''
+        setQrContainerMode(true)
+        modalMask.classList.add('active')
+
+        setTimeout(() => modalMask.focus(), 120)
+
+        if (isWechat) {
+          if (typeof window.WxLogin !== 'function') {
+            loginMsg.textContent = '微信扫码组件加载失败，请检查 wxLogin.js 是否可访问'
+            closeQrModal()
+            return
+          }
+
+          // 微信网站应用登录必须先走 WxLogin / qrconnect 获取 code。
+          // redirect_uri 不能直接指向后端登录接口；否则 iframe 会跳到后端响应页，父页面拿不到 code。
+          // 这里回调到当前页面的 wechat_callback 模式，由 iframe 通过 postMessage 把 code 交给父页面，父页面再调用：
+          // webApiRoot + 'thirdParty/login'?code=xxx&ent=xxx&type=WECHAT_WEB
+          const redirectUri = buildWechatWebCallbackUrl(ent, loginType)
+          new WxLogin({
+            self_redirect: true,
+            id: 'modal-qrcode-img',
+            appid: WECHAT_WEB_APPID,
+            scope: 'snsapi_login',
+            redirect_uri: encodeURIComponent(redirectUri),
+            response_type: 'code',
+            state: createThirdPartyState(loginType, ent),
+            style: '',
+            href: '',
+            fast_login: 1,
+            color_scheme: 'auto',
+            onReady: function () {
+              modalQrPlaceholder.style.display = 'none'
+              modalQrPic.style.display = 'block'
+            },
+            onQRcodeReady: function () {
+              modalQrPlaceholder.style.display = 'none'
+              modalQrPic.style.display = 'block'
+            }
+          })
+          return
+        }
+
+        if (wwLoginPanel && typeof wwLoginPanel.unmount === 'function') {
+          wwLoginPanel.unmount()
+          wwLoginPanel = null
+        }
+
+        if (!window.ww && window.WWLogin) window.ww = window.WWLogin
+        if (window.ww && typeof ww.createWWLoginPanel === 'function') {
+          wwLoginPanel = ww.createWWLoginPanel({
+            el: '#modal-qrcode-img',
+            params: {
+              login_type: 'CorpApp',
+              appid: WXWORK_APPID,
+              agentid: WXWORK_AGENTID,
+              redirect_uri: buildThirdPartyLoginUrl({ ent, type: loginType }),
+              state: createThirdPartyState(loginType, ent),
+              panel_size: 'small',
+              lang: 'zh',
+              redirect_type: 'callback',
+              auto_login: false
+            },
+            onLoginSuccess({ code }) {
+              getCode({ code, ent, type: loginType })
+            },
+            onLoginFail(err) {
+              loginMsg.textContent = '企业微信登录失败：' + (err?.message || err || '请稍后重试')
+            }
+          })
+
+          modalQrPlaceholder.style.display = 'none'
+          modalQrPic.style.display = 'block'
+        } else {
+          loginMsg.textContent = '企业微信扫码组件加载失败，请检查 wecom-jssdk 是否可访问'
+          closeQrModal()
+        }
+      }
+
+      function closeQrModal() {
+        if (wwLoginPanel && typeof wwLoginPanel.unmount === 'function') {
+          wwLoginPanel.unmount()
+          wwLoginPanel = null
+        }
+        modalMask.classList.remove('active')
+        modalQrPic.innerHTML = ''
+        modalQrPic.style.display = 'none'
+        modalQrPlaceholder.style.display = ''
+        setQrContainerMode(false)
+      }
+
+      function getCode(data) {
+        const ent = normalizeEntName(data?.ent || getCurrentEntName())
+        const loginType = data?.type || 'WECHAT_CORP_WEB'
+        const code = String(data?.code || '').trim()
+        if (!code) {
+          loginMsg.textContent = '登录失败：未获取到扫码 code'
+          return
+        }
+        if (!ent) {
+          loginMsg.textContent = '登录失败：未匹配到企业'
+          return
+        }
+
+        // 微信 code 只能使用一次。iframe 回调、message 事件或用户重复点击可能导致同一个 code 被提交两次，
+        // 第二次后端换取 access_token 时微信会返回 errcode=40029 invalid code。
+        const codeKey = loginType + ':' + ent + ':' + code
+        if (thirdPartyLoginSubmitting || submittedThirdPartyCodeMap[codeKey]) {
+          return
+        }
+        thirdPartyLoginSubmitting = true
+        submittedThirdPartyCodeMap[codeKey] = true
+
+        const submitData = {
+          code,
+          ent,
+          type: loginType
+        }
+
+        QB.CreateRequest(THIRD_PARTY_LOGIN_API, 'GET', submitData, false)
+          .then(async (jsonData) => {
+            const payload = unwrapThirdPartyResult(jsonData)
+            await handleThirdPartyLoginPayload(payload, loginType, ent)
+          })
+          .catch(function (err) {
+            loginMsg.textContent = '请求失败：' + (err?.message || err)
+          })
+          .finally(function () {
+            thirdPartyLoginSubmitting = false
+          })
+      }
+
+      function bindWechatCallbackMessage() {
+        if (window.__wechatCallbackMessageBound) return
+        window.__wechatCallbackMessageBound = true
+
+        window.addEventListener('message', function (event) {
+          if (event.origin !== window.location.origin) return
+
+          let data = event.data
+          if (typeof data === 'string') {
+            try { data = JSON.parse(data) } catch (e) { }
+          }
+          if (!data || data.from !== 'WECHAT_CALLBACK') return
+
+          const result = data.result
+          if (!result) return
+
+          if (result.type === 'code') {
+            const expectedState = window.sessionStorage.getItem('third-party-login-state')
+            if (expectedState && result.state && expectedState !== result.state) {
+              loginMsg.textContent = '微信登录失败：state 校验失败，请重新扫码'
+              return
+            }
+            closeQrModal()
+            getCode({
+              code: result.code,
+              ent: result.ent || getCurrentEntName(),
+              type: result.loginType || 'WECHAT_WEB'
+            })
+            return
+          }
+
+          if (result.type === 'success') {
+            if (result.token || result.accessToken || result.Token) {
+              handleThirdPartyLoginPayload(result, 'WECHAT_WEB', result.ent || getCurrentEntName())
+            } else {
+              window.location.reload()
+            }
+          } else if (result.type === 'need_bind') {
+            redirectToBindingPage({
+              isBound: true,
+              token: result.bindToken || result.token,
+              ent: result.ent || getCurrentEntName(),
+              type: 'WECHAT_WEB'
+            }, 'WECHAT_WEB', result.ent || getCurrentEntName())
+          } else if (result.type === 'error') {
+            loginMsg.textContent = '微信登录失败：' + (result.message || '请稍后重试')
+          }
+        })
+      }
+
+      function setNewPassword() {
+        window.location.href = `${window.location.protocol}//${window.location.host}/NewApp/UserLoginManagement/restPassword.html`
+      }
+
+      // ====== 事件绑定（登录）======
+      function bind() {
+        // 企业微信环境隐藏按钮
+        const ua = navigator.userAgent.toLowerCase()
+        const isWeCom = ua.includes('wxwork')
+        if (isWeCom) {
+          document.getElementById("workwechat-btn").style.display = 'none'
+          document.getElementById("wechat-btn").style.display = 'none'
+        }
+
+        // 加载 ej2（你原逻辑）
+        const ejScript = document.createElement('script')
+        ejScript.src = '/js/ej2/ej2.min.js'
+        document.body.appendChild(ejScript)
+
+        // 图标切换：邮箱登录/手机登录
+        emailIconBtn.addEventListener('click', () => {
+          phoneForm.classList.add('hidden')
+          emailForm.classList.remove('hidden')
+          loginForm.classList.add('hidden')
+
+          const tabPhone = document.getElementById('tab-phone')
+          tabPhone.className = 'text-sm font-semibold pb-2 border-b-2 border-blue-600 text-blue-700'
+          tabPhone.textContent = "邮箱登录"
+          document.getElementById('tab-account').className = 'text-sm font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800'
+
+          emailIconBtn.classList.add('hidden')
+          phoneIconBtn.classList.remove('hidden')
+        })
+
+        phoneIconBtn.addEventListener('click', () => {
+          phoneForm.classList.remove('hidden')
+          emailForm.classList.add('hidden')
+          loginForm.classList.add('hidden')
+
+          const tabPhone = document.getElementById('tab-phone')
+          tabPhone.className = 'text-sm font-semibold pb-2 border-b-2 border-blue-600 text-blue-700'
+          tabPhone.textContent = "验证码登录"
+          document.getElementById('tab-account').className = 'text-sm font-semibold pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800'
+
+          phoneIconBtn.classList.add('hidden')
+          emailIconBtn.classList.remove('hidden')
+        })
+
+        // 手机输入提示
+        inputPhone.addEventListener('input', () => {
+          const val = inputPhone.value.trim()
+          showInline(phoneError, !validatePhone(val), '请输入正确的11位手机号')
+        })
+
+        // 发送手机验证码
+        verifyBtn.addEventListener('click', () => {
+          const phoneVal = inputPhone.value.trim()
+          if (!validatePhone(phoneVal)) {
+            showInline(phoneError, true, '请输入正确的11位手机号')
+            inputPhone.focus()
+            return
+          }
+
+          // 获取选择的企业
+          const select = document.getElementById('loginCompanySelect2')
+          if (!select.value) {
+            showInline(phoneError, true, '请先选择企业')
+            return
+          }
+          const selectedOption = select.options[select.selectedIndex]
+          const entName = selectedOption.dataset.entName || ''
+
+          if (verifyBtn.classList.contains('disabled')) return
+
+          const sendData = {
+            ent: entName,
+            type: "MOBILE",
+            account: phoneVal,
+            scene: "LOGIN",
+          }
+
+          QB.CreateRequest(webApiRoot + "message/code/send/public", "POST", sendData, false)
+            .then((res) => {
+              const data = res.data
+              if (data.Code === 400) {
+                showInline(phoneError, true, data.Message)
+              }
+            })
+
+          let countdown = 60
+          verifyBtn.classList.add('disabled')
+          verifyBtn.textContent = `重新发送 (${countdown}s)`
+          const timer = setInterval(() => {
+            countdown--
+            if (countdown <= 0) {
+              clearInterval(timer)
+              verifyBtn.classList.remove('disabled')
+              verifyBtn.textContent = '发送验证码'
+            } else {
+              verifyBtn.textContent = `重新发送 (${countdown}s)`
+            }
+          }, 1000)
+        })
+
+        // 手机验证码登录提交
+        phoneForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          const phone = document.getElementById('input-phone').value.trim()
+          const code = document.getElementById('input-verifi').value.trim()
+          loginFunctionByCode(phone, code, "MOBILE")
+        })
+
+        // 邮箱发送验证码
+        verifyEmailBtn.addEventListener("click", () => {
+          const emailVal = emailInput.value.trim()
+          if (!emailRegex.test(emailVal)) {
+            showInline(emailError, true, "请输入正确的邮箱地址")
+            emailInput.focus()
+            return
+          }
+          showInline(emailError, false)
+
+          // 获取选择的企业
+          const select = document.getElementById('loginCompanySelect')
+          if (!select.value) {
+            showInline(emailError, true, '请先选择企业')
+            return
+          }
+          const selectedOption = select.options[select.selectedIndex]
+          const entName = selectedOption.dataset.entName || ''
+
+          if (verifyEmailBtn.classList.contains('disabled')) return
+
+          const sendData = {
+            ent: entName,
+            type: "EMAIL",
+            account: emailVal,
+            scene: "LOGIN",
+          }
+
+          let countdown = 60
+          verifyEmailBtn.classList.add('disabled')
+          verifyEmailBtn.textContent = `重新发送 (${countdown}s)`
+          const timer = setInterval(() => {
+            countdown--
+            if (countdown <= 0) {
+              clearInterval(timer)
+              verifyEmailBtn.classList.remove('disabled')
+              verifyEmailBtn.textContent = '发送验证码'
+            } else {
+              verifyEmailBtn.textContent = `重新发送 (${countdown}s)`
+            }
+          }, 1000)
+
+          QB.CreateRequest(webApiRoot + "message/code/send/public", "POST", sendData, false)
+            .then((res) => {
+              const data = res.data
+              if (data.Code === 400) {
+                showInline(emailError, true, data.Message)
+              }
+            })
+        })
+
+        emailInput.addEventListener("input", () => {
+          const emailVal = emailInput.value.trim()
+          showInline(emailError, emailVal && !emailRegex.test(emailVal), "请输入正确的邮箱地址")
+        })
+
+        // 邮箱验证码登录提交
+        emailForm.addEventListener("submit", (e) => {
+          e.preventDefault()
+          const emailVal = emailInput.value.trim()
+          const code = verifyInput.value.trim()
+
+          let valid = true
+          if (!emailRegex.test(emailVal)) {
+            showInline(emailError, true, "请输入正确的邮箱地址")
+            valid = false
+          } else {
+            showInline(emailError, false)
+          }
+          if (!code) {
+            alert("请输入验证码")
+            valid = false
+          }
+          if (!valid) return
+
+          loginFunctionByCode(emailVal, code, "EMAIL")
+        })
+
+        // 正常账号登录提交（沿用你原逻辑）
+        loginForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          loginMsg.textContent = ''
+
+          const username = document.getElementById('input-username').value.trim()
+          const password = document.getElementById('input-password').value.trim()
+          if (!username || !password) {
+            loginMsg.textContent = '账号和密码不能为空'
+            return
+          }
+
+          const sel = document.getElementById('loginCompanySelect1');
+          const entValue = sel.options[sel.selectedIndex].value;
+          if (!entValue) {
+            loginMsg.textContent = '请选择企业';
+            return;
+          }
+          // 从 option 的 data-entName 属性获取 entName
+          const selectedOption = sel.options[sel.selectedIndex];
+          const entName = selectedOption.dataset.entName || selectedOption.textContent;
+
+          const data = {
+            strUser: username,
+            strPwd: password,
+            entName: entName,  // 使用 entName 调用 API
+          }
+
+
+          QB.CreateRequest(webApiRoot + 'LoginAuthority/UserLoginByEnt', 'POST', data)
+            .then(async (resp) => {
+              const jsonData = resp.data
+              if (jsonData.Type === 'success') {
+                window.localStorage.setItem(accessTokenKey, JSON.stringify(jsonData.Result.token.replace('Bearer ', '')))
+                window.localStorage.setItem(refreshAccessTokenKey, JSON.stringify(jsonData.Result.refreshToken.replace('Bearer ', '')))
+                window.sessionStorage.setItem(accessTokenKey, JSON.stringify(jsonData.Result.token.replace('Bearer ', '')))
+                window.sessionStorage.setItem(refreshAccessTokenKey, JSON.stringify(jsonData.Result.refreshToken.replace('Bearer ', '')))
+                window.sessionStorage.removeItem(userinfoTokenKey)
+                await RecordMyUserInfo(true)
+                toRedirect()
+              } else {
+                loginMsg.textContent = jsonData.Message
+              }
+            })
+        })
+
+
+
+        // 扫码按钮
+        bindWechatCallbackMessage()
+        document.getElementById('wechat-btn').onclick = (e) => { e.preventDefault(); openQrModal('wechat') }
+        document.getElementById('workwechat-btn').onclick = (e) => { e.preventDefault(); openQrModal('wxwork') }
+
+        modalClose.onclick = closeQrModal
+        modalMask.onclick = (e) => { if (e.target === modalMask) closeQrModal() }
+        window.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && modalMask.classList.contains('active')) closeQrModal()
+        })
+
+        // 自动登录（你原逻辑）
+        const token = window.localStorage.getItem('vue-next-admin:access-token')
+        if (token) {
+          toRedirect()
+        } else {
+          // try { QB.ConnectionWebSocket() } catch(e) {}
+        }
+      }
+
+      // 注册面板 - 密码可见性切换
+      function toggleRegPassword(inputId, evt) {
+        if (evt) { evt.stopPropagation(); evt.preventDefault() }
+        const input = document.getElementById(inputId)
+        if (!input) return
+
+        const wrapper = input.parentElement
+        const btn = wrapper ? wrapper.querySelector('.password-toggle-btn') : null
+        if (!btn) return
+
+        const path = btn.querySelector('svg path')
+        if (!path) return
+
+        if (input.type === 'password') {
+          input.type = 'text'
+          path.setAttribute('d', 'M515.2 224c-307.2 0-492.8 313.6-492.8 313.6s214.4 304 492.8 304 492.8-304 492.8-304S822.4 224 515.2 224zM832 652.8c-102.4 86.4-211.2 140.8-320 140.8s-217.6-51.2-320-140.8c-35.2-32-70.4-64-99.2-99.2-6.4-6.4-9.6-12.8-16-19.2 3.2-6.4 9.6-12.8 12.8-19.2 25.6-35.2 57.6-70.4 92.8-102.4 99.2-89.6 208-144 329.6-144s230.4 54.4 329.6 144c35.2 32 64 67.2 92.8 102.4 3.2 6.4 9.6 12.8 12.8 19.2-3.2 6.4-9.6 12.8-16 19.2C902.4 585.6 870.4 620.8 832 652.8z M512 345.6c-96 0-169.6 76.8-169.6 169.6 0 96 76.8 169.6 169.6 169.6 96 0 169.6-76.8 169.6-169.6C681.6 422.4 604.8 345.6 512 345.6zM512 640c-67.2 0-121.6-54.4-121.6-121.6 0-67.2 54.4-121.6 121.6-121.6 67.2 0 121.6 54.4 121.6 121.6C633.6 582.4 579.2 640 512 640z')
+        } else {
+          input.type = 'password'
+          path.setAttribute('d', 'M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066667 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z')
+        }
+      }
+
+      return {
+        bind,
+        switchLoginTab,
+        togglePassword,
+        toggleRegPassword,
+        openAgreement,
+        setNewPassword,
+        getEnt,
+        isWechatWebCallbackPage
+      }
+    })()
+
+    window.LoginUI = LoginUI
+
+    function handleWechatWebCallbackPage() {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('wechat_callback') !== '1') return false
+
+      const code = params.get('code') || ''
+      const state = params.get('state') || ''
+      const ent = params.get('ent') || ''
+      const loginType = params.get('type') || 'WECHAT_WEB'
+      const payload = code
+        ? { type: 'code', code, state, ent, loginType }
+        : { type: 'error', message: '微信授权未返回 code' }
+
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ from: 'WECHAT_CALLBACK', result: payload }, window.location.origin)
+      }
+
+      document.body.innerHTML = '<div style="height:100vh;display:flex;align-items:center;justify-content:center;font-family:Arial,\'Microsoft YaHei\',sans-serif;color:#2563eb;font-size:14px;">微信授权处理中...</div>'
+      return true
+    }
+
+    /*************************************************************
+     * 注册区域：尽量保持你原逻辑，只调整“showError 的 hidden”适配
+     *************************************************************/
+    function showError(elementId, message) {
+      console.log(message);
+      const errorEl = document.getElementById(elementId)
+      if (!errorEl) return
+      errorEl.textContent = message
+      errorEl.classList.remove('hidden')
+      errorEl.style.display = 'block'
+    }
+    function hideError(elementId) {
+      const el = document.getElementById(elementId)
+      if (!el) return
+      el.classList.add('hidden')
+      el.style.display = 'none'
+      el.textContent = ''
+    }
+
+    function isEmail(email) {
+      return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+    }
+    function isChinaMobileNumber(number) {
+      return /^1[3-9]\d{9}$/.test(number)
+    }
+    function validatePassword(password) {
+      const regex = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{12,}$/
+      return regex.test(password)
+    }
+    function isChinese(str) {
+      const regex = /^[\u4e00-\u9fa5\s]+$/
+      return regex.test(str)
+    }
+    function isEnglish(str) {
+      const regex = /^[a-zA-Z]+$/
+      return regex.test(str)
+    }
+    function startCountdown(btn, seconds = 60) {
+      if (btn.disabled) return
+      btn.disabled = true
+      const originalText = "获取验证码"
+      const tick = () => {
+        if (seconds > 0) {
+          btn.textContent = `${seconds}s 后重新获取`
+          seconds--
+          setTimeout(tick, 1000)
+        } else {
+          btn.disabled = false
+          btn.textContent = originalText
+        }
+      }
+      tick()
+    }
+
+    function ensureUniqueToggleBtn(inputId) {
+      const input = document.getElementById(inputId)
+      if (!input) return
+      const wrapper = input.parentNode
+      const btnId = inputId === 'password' ? 'password-toggle-btn' : 'confirm-password-toggle-btn'
+      const allBtns = wrapper.querySelectorAll('button')
+      allBtns.forEach(btn => { if (btn.id !== btnId) btn.remove() })
+      if (document.querySelectorAll(`#${btnId}`).length > 1) {
+        Array.from(document.querySelectorAll(`#${btnId}`)).slice(1).forEach(btn => btn.remove())
+      }
+    }
+
+    // 初始化租户类型切换（主租户 / 子租户，可选）
+    function initTenantToggle() {
+      const groups = document.querySelectorAll('.tenant-toggle-group')
+      groups.forEach(group => {
+        const buttons = group.querySelectorAll('.tenant-toggle-btn')
+        const hidden = group.parentElement.querySelector('input[type="hidden"][name="tenantType"]')
+        buttons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            buttons.forEach(b => {
+              b.classList.remove('bg-blue-600', 'text-white')
+              b.classList.add('text-slate-700')
+            })
+            btn.classList.add('bg-blue-600', 'text-white')
+            btn.classList.remove('text-slate-700')
+            if (hidden) hidden.value = btn.dataset.value || ''
+          })
+        })
+      })
+    }
+
+    function togglePassword(inputId, evt) {
+      const event = evt || window.event
+      if (event) { event.stopPropagation(); event.preventDefault() }
+      const input = document.getElementById(inputId)
+      const btnId = inputId === 'password' ? 'password-toggle-btn' : 'confirm-password-toggle-btn'
+      const btn = document.getElementById(btnId)
+      if (!input || !btn) return
+
+      const path = btn.querySelector('svg path')
+      if (!path) return
+
+      if (input.type === 'password') {
+        input.type = 'text'
+        path.setAttribute('d', 'M515.2 224c-307.2 0-492.8 313.6-492.8 313.6s214.4 304 492.8 304 492.8-304 492.8-304S822.4 224 515.2 224zM832 652.8c-102.4 86.4-211.2 140.8-320 140.8s-217.6-51.2-320-140.8c-35.2-32-70.4-64-99.2-99.2-6.4-6.4-9.6-12.8-16-19.2 3.2-6.4 9.6-12.8 12.8-19.2 25.6-35.2 57.6-70.4 92.8-102.4 99.2-89.6 208-144 329.6-144s230.4 54.4 329.6 144c35.2 32 64 67.2 92.8 102.4 3.2 6.4 9.6 12.8 12.8 19.2-3.2 6.4-9.6 12.8-16 19.2C902.4 585.6 870.4 620.8 832 652.8z M512 345.6c-96 0-169.6 76.8-169.6 169.6 0 96 76.8 169.6 169.6 169.6 96 0 169.6-76.8 169.6-169.6C681.6 422.4 604.8 345.6 512 345.6zM512 640c-67.2 0-121.6-54.4-121.6-121.6 0-67.2 54.4-121.6 121.6-121.6 67.2 0 121.6 54.4 121.6 121.6C633.6 582.4 579.2 640 512 640z')
+      } else {
+        input.type = 'password'
+        path.setAttribute('d', 'M332.8 729.6l34.133333-34.133333c42.666667 12.8 93.866667 21.333333 145.066667 21.333333 162.133333 0 285.866667-68.266667 375.466667-213.333333-46.933333-72.533333-102.4-128-166.4-162.133334l29.866666-29.866666c72.533333 42.666667 132.266667 106.666667 183.466667 192-98.133333 170.666667-243.2 256-426.666667 256-59.733333 4.266667-119.466667-8.533333-174.933333-29.866667z m-115.2-64c-51.2-38.4-93.866667-93.866667-132.266667-157.866667 98.133333-170.666667 243.2-256 426.666667-256 38.4 0 76.8 4.266667 110.933333 12.8l-34.133333 34.133334c-25.6-4.266667-46.933333-4.266667-76.8-4.266667-162.133333 0-285.866667 68.266667-375.466667 213.333333 34.133333 51.2 72.533333 93.866667 115.2 128l-34.133333 29.866667z m230.4-46.933333l29.866667-29.866667c8.533333 4.266667 21.333333 4.266667 29.866666 4.266667 46.933333 0 85.333333-38.4 85.333334-85.333334 0-12.8 0-21.333333-4.266667-29.866666l29.866667-29.866667c12.8 17.066667 17.066667 38.4 17.066666 64 0 72.533333-55.466667 128-128 128-17.066667-4.266667-38.4-12.8-59.733333-21.333333zM384 499.2c4.266667-68.266667 55.466667-119.466667 123.733333-123.733333 0 4.266667-123.733333 123.733333-123.733333 123.733333zM733.866667 213.333333l29.866666 29.866667-512 512-34.133333-29.866667L733.866667 213.333333z')
+      }
+    }
+
+    let phoneInput, emailInput
+    function bindContactInputEvents() {
+      if (phoneInput) {
+        phoneInput.addEventListener('input', function () {
+          const value = this.value.trim()
+          if (!this.required) return
+          if (!value) showError('phone-error', '手机号码不能为空！')
+          else if (!isChinaMobileNumber(value)) showError('phone-error', '请输入有效的手机号码！')
+          else hideError('phone-error')
+        })
+      }
+      if (emailInput) {
+        emailInput.addEventListener('input', function () {
+          const value = this.value.trim()
+          if (!this.required) return
+          if (!value) showError('email-error', '邮箱地址不能为空！')
+          else if (!isEmail(value)) showError('email-error', '请输入有效的邮箱地址！')
+          else hideError('email-error')
+        })
+      }
+    }
+
+    // ========== 注册表单验证和提交逻辑 ==========
+    function validateRegUsername(username) {
+      if (!username) return { valid: false, message: '账号不能为空！' }
+      if (username.length < 3 || username.length > 20) return { valid: false, message: '账号长度必须在3-20个字符之间！' }
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) return { valid: false, message: '账号仅限字母、数字、下划线！' }
+      return { valid: true }
+    }
+
+    function validateRegPassword(password) {
+      if (!password) return { valid: false, message: '密码不能为空！' }
+      if (password.length < 12) return { valid: false, message: '密码长度至少12位！' }
+      const hasUppercase = /[A-Z]/.test(password)
+      const hasLowercase = /[a-z]/.test(password)
+      const hasNumbers = /[0-9]/.test(password)
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+      if (!hasUppercase) return { valid: false, message: '密码需包含大写字母！' }
+      if (!hasLowercase) return { valid: false, message: '密码需包含小写字母！' }
+      if (!hasNumbers) return { valid: false, message: '密码需包含数字！' }
+      if (!hasSpecialChar) return { valid: false, message: '密码需包含特殊符号！' }
+      return { valid: true }
+    }
+
+    function validateRegConfirmPassword(password, confirmPassword) {
+      if (!confirmPassword) return { valid: false, message: '确认密码不能为空！' }
+      if (password !== confirmPassword) return { valid: false, message: '两次输入的密码不一致！' }
+      return { valid: true }
+    }
+
+    function validateRegCompany(company) {
+      if (!company) return { valid: false, message: '请选择企业！' }
+      return { valid: true }
+    }
+
+    // 验证手机号
+    function validateRegPhone(phone) {
+      if (!phone) return { valid: false, message: '请输入手机号！' }
+      const phoneRegex = /^1[3-9]\d{9}$/
+      if (!phoneRegex.test(phone)) return { valid: false, message: '请输入有效的手机号！' }
+      return { valid: true }
+    }
+
+    // 验证验证码
+    function validateRegCode(code) {
+      if (!code) return { valid: false, message: '请输入验证码！' }
+      if (code.length < 4) return { valid: false, message: '请输入有效的验证码！' }
+      return { valid: true }
+    }
+
+    // 初始化注册表单事件
+    function initRegisterForm() {
+      const registerForm = document.getElementById('registerForm')
+      if (!registerForm) return
+
+      const companySelect = document.getElementById('reg-company')
+      const usernameInput = document.getElementById('reg-username')
+      const phoneInput = document.getElementById('reg-phone')
+      const codeInput = document.getElementById('reg-code')
+      const getCodeBtn = document.getElementById('reg-get-code-btn')
+      const passwordInput = document.getElementById('reg-password')
+      const confirmPasswordInput = document.getElementById('reg-confirmPassword')
+
+      // 实时验证账号
+      if (usernameInput) {
+        usernameInput.addEventListener('blur', function () {
+          const result = validateRegUsername(this.value.trim())
+          if (result.valid) {
+            hideError('reg-username-error')
+          } else {
+            showError('reg-username-error', result.message)
+          }
+        })
+      }
+
+      // 实时验证手机号
+      if (phoneInput) {
+        phoneInput.addEventListener('blur', function () {
+          const result = validateRegPhone(this.value.trim())
+          if (result.valid) {
+            hideError('reg-phone-error')
+          } else {
+            showError('reg-phone-error', result.message)
+          }
+        })
+      }
+
+      // 实时验证验证码
+      if (codeInput) {
+        codeInput.addEventListener('blur', function () {
+          const result = validateRegCode(this.value.trim())
+          if (result.valid) {
+            hideError('reg-code-error')
+          } else {
+            showError('reg-code-error', result.message)
+          }
+        })
+      }
+
+      // 获取验证码按钮
+      if (getCodeBtn && phoneInput) {
+        getCodeBtn.addEventListener('click', function () {
+          const phone = phoneInput.value.trim()
+          const phoneResult = validateRegPhone(phone)
+
+          if (!phoneResult.valid) {
+            showError('reg-phone-error', phoneResult.message)
+            return
+          }
+
+          // 获取企业信息
+          const selectedOption = companySelect.options[companySelect.selectedIndex]
+          const entName = selectedOption.dataset.entName || ''
+
+          if (!entName) {
+            showError('reg-company-error', '请先选择企业！')
+            return
+          }
+
+          hideError('reg-phone-error')
+          getCodeBtn.disabled = true
+          getCodeBtn.textContent = '发送中...'
+
+          // 发送验证码请求
+          const sendData = {
+            ent: entName,
+            type: 'MOBILE',
+            scene: 'REGISTER',
+            account: phone
+          }
+
+          QB.CreateRequest(webApiRoot + 'message/code/send/public', 'POST', sendData, false, 'json')
+            .then(res => {
+              if (res && res.data && res.data.Code === 200) {
+                alert('验证码已发送！')
+                // 开始倒计时
+                let countdown = 60
+                const timer = setInterval(() => {
+                  countdown--
+                  getCodeBtn.textContent = countdown + '秒后重试'
+                  if (countdown <= 0) {
+                    clearInterval(timer)
+                    getCodeBtn.disabled = false
+                    getCodeBtn.textContent = '获取验证码'
+                  }
+                }, 1000)
+              } else {
+                getCodeBtn.disabled = false
+                getCodeBtn.textContent = '获取验证码'
+                showError('reg-phone-error', res?.data?.Message || '验证码发送失败，请稍后再试！')
+              }
+            })
+            .catch(err => {
+              console.error('验证码发送失败：', err)
+              getCodeBtn.disabled = false
+              getCodeBtn.textContent = '获取验证码'
+              showError('reg-phone-error', '网络错误，请检查连接或联系管理员！')
+            })
+        })
+      }
+
+      // 实时验证密码
+      if (passwordInput) {
+        passwordInput.addEventListener('blur', function () {
+          const result = validateRegPassword(this.value)
+          if (result.valid) {
+            hideError('reg-password-error')
+          } else {
+            showError('reg-password-error', result.message)
+          }
+        })
+      }
+
+      // 实时验证确认密码
+      if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('blur', function () {
+          const result = validateRegConfirmPassword(passwordInput.value, this.value)
+          if (result.valid) {
+            hideError('reg-confirmPassword-error')
+          } else {
+            showError('reg-confirmPassword-error', result.message)
+          }
+        })
+      }
+
+      // 企业选择验证
+      if (companySelect) {
+        companySelect.addEventListener('change', function () {
+          const result = validateRegCompany(this.value)
+          if (result.valid) {
+            hideError('reg-company-error')
+          } else {
+            showError('reg-company-error', result.message)
+          }
+        })
+      }
+
+      // 表单提交
+      registerForm.addEventListener('submit', function (e) {
+        e.preventDefault()
+
+        const company = companySelect ? companySelect.value.trim() : ''
+        const username = usernameInput ? usernameInput.value.trim() : ''
+        const phone = phoneInput ? phoneInput.value.trim() : ''
+        const code = codeInput ? codeInput.value.trim() : ''
+        const password = passwordInput ? passwordInput.value : ''
+        const confirmPassword = confirmPasswordInput ? confirmPasswordInput.value : ''
+
+        // 验证所有字段
+        let isValid = true
+
+        const companyResult = validateRegCompany(company)
+        if (!companyResult.valid) {
+          showError('reg-company-error', companyResult.message)
+          isValid = false
+        } else {
+          hideError('reg-company-error')
+        }
+
+        const usernameResult = validateRegUsername(username)
+        if (!usernameResult.valid) {
+          showError('reg-username-error', usernameResult.message)
+          isValid = false
+        } else {
+          hideError('reg-username-error')
+        }
+
+        const phoneResult = validateRegPhone(phone)
+        if (!phoneResult.valid) {
+          showError('reg-phone-error', phoneResult.message)
+          isValid = false
+        } else {
+          hideError('reg-phone-error')
+        }
+
+        const codeResult = validateRegCode(code)
+        if (!codeResult.valid) {
+          showError('reg-code-error', codeResult.message)
+          isValid = false
+        } else {
+          hideError('reg-code-error')
+        }
+
+        const passwordResult = validateRegPassword(password)
+        if (!passwordResult.valid) {
+          showError('reg-password-error', passwordResult.message)
+          isValid = false
+        } else {
+          hideError('reg-password-error')
+        }
+
+        const confirmPasswordResult = validateRegConfirmPassword(password, confirmPassword)
+        if (!confirmPasswordResult.valid) {
+          showError('reg-confirmPassword-error', confirmPasswordResult.message)
+          isValid = false
+        } else {
+          hideError('reg-confirmPassword-error')
+        }
+
+        if (!isValid) return
+
+        // 所有验证都通过，提交注册
+        submitRegisterForm(company, username, password, phone, code)
+      })
+    }
+
+    function submitRegisterForm(company, username, password, phone, code) {
+      const submitBtn = document.querySelector('#registerForm button[type="submit"]')
+      if (!submitBtn) return
+
+      submitBtn.disabled = true
+      submitBtn.textContent = '注册中...'
+      hideError('register-error')
+
+      // 获取企业信息
+      const companySelect = document.getElementById('reg-company')
+      const selectedOption = companySelect.options[companySelect.selectedIndex]
+      const entName = selectedOption.dataset.entName || ''
+
+      // 构建注册数据对象
+      const payload = {
+        ent: entName,
+        loginName: username,
+        username: username,
+        password: password,  // 密码字段已注释
+        sex: 'M',  // 性别字段，如需要可从表单获取
+        phone: phone,
+        depId: '',  // 部门ID，如需要可从表单获取
+        jobId: '',  // 职位ID，如需要可从表单获取
+        code: code  // 手机验证码
+      }
+
+      // 发送注册请求
+      QB.CreateRequest(webApiRoot + 'LoginAuthority/register', 'POST', payload, false, 'json')
+        .then(res => {
+          submitBtn.disabled = false
+          submitBtn.textContent = '注册'
+
+          if (res && res.data && (res.data.Code === 200 || res.data.success)) {
+            // 注册成功，跳转到登录页或显示成功信息
+            alert('注册成功！请使用账号登录')
+            UI.switchAuth('login')
+          } else {
+            showError('register-error', res?.data?.Message || '注册失败，请稍后重试')
+          }
+        })
+        .catch(error => {
+          submitBtn.disabled = false
+          submitBtn.textContent = '注册'
+          console.error('Registration error:', error)
+          showError('register-error', '网络错误，请检查连接')
+        })
+    }
+
+    // 加载企业列表到下拉菜单（使用与登录相同的逻辑）
+    function loadCompanyList() {
+      const companySelect = document.getElementById('reg-company')
+      if (!companySelect) return
+
+      // 使用与登录相同的企业数据
+      const enterprises = window.enterpriseList || []
+
+      // 清空列表（保留默认选项）
+      companySelect.innerHTML = '<option value="">请选择企业</option>'
+
+      enterprises.forEach((item) => {
+        // 防御性读取
+        const label = item.ShortCName
+        const value = item.rowid  // 使用 rowid 作为选择值
+        const entName = item.ShortName
+
+        // 必须同时存在
+        if (!label || !value || !entName) return
+
+        const option = document.createElement('option')
+        option.value = value
+        option.dataset.entName = entName
+        option.textContent = label
+        companySelect.appendChild(option)
+      })
+
+      // 如果URL参数中有entid，则设置默认值并禁用
+      const urlParams = new URLSearchParams(window.location.search)
+      let entIdParam = urlParams.get('entid')
+      if (entIdParam) {
+        entIdParam = decodeURIComponent(entIdParam)
+        companySelect.value = entIdParam
+        companySelect.disabled = true
+        companySelect.classList.add('opacity-50', 'cursor-not-allowed')
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      if (handleWechatWebCallbackPage()) return
+      // 检查URL参数entid，并确保注册面板始终显示（会在renderEnterpriseSelect中设置默认企业）
+      const urlParams = new URLSearchParams(window.location.search)
+      const entIdParam = urlParams.get('entid')
+      const tabRegister = document.getElementById('tab-auth-register')
+      const panelRegister = document.getElementById('panel-register')
+      // 注册面板和选项卡始终显示，renderEnterpriseSelect会处理entid的默认选择
+      if (tabRegister) tabRegister.style.display = ''
+      if (panelRegister) panelRegister.style.display = ''
+
+      // 初始化注册表单
+      loadCompanyList()
+      initRegisterForm()
+      // 设置logo背景图片
+      const headerLogo = document.getElementById('header-logo')
+      // if (headerLogo ) {
+      //   headerLogo.style.backgroundImage = "url('/images/company-logo.png')"
+      // }
+
+      UI.switchAuth('login')
+
+      // 登录模块初始化
+      LoginUI.bind()
+
+      // 检查URL参数，如果有loginType=portal则只显示企业门户登录
+
+      const loginType = urlParams.get('loginType')
+      if (loginType === 'portal') {
+        // 切换到企业门户登录
+        LoginUI.switchLoginTab('portal')
+
+        // 隐藏账号登录和验证码登录的tab（保留企业注册显示）
+        const tabAccount = document.getElementById('tab-account')
+        const tabPhone = document.getElementById('tab-phone')
+
+        if (tabAccount) tabAccount.style.display = 'none'
+        if (tabPhone) tabPhone.style.display = 'none'
+
+        // 注意：不要隐藏 `tab-auth-register` 或 `panel-register`，保留企业注册入口
+
+        // 隐藏所有其他登录方式（微信、企业微信、邮箱、手机）
+        const wechatBtn = document.getElementById('wechat-btn')
+        const workwechatBtn = document.getElementById('workwechat-btn')
+        const emailIconBtn = document.getElementById('email-icon-btn')
+        const phoneIconBtn = document.getElementById('phone-icon-btn')
+        const otherLoginSection = document.querySelector('#panel-login .mt-6')
+
+        if (wechatBtn) wechatBtn.style.display = 'none'
+        if (workwechatBtn) workwechatBtn.style.display = 'none'
+        if (emailIconBtn) emailIconBtn.style.display = 'none'
+        if (phoneIconBtn) phoneIconBtn.style.display = 'none'
+
+        // 隐藏整个"其他登录方式"区域
+        if (otherLoginSection) otherLoginSection.style.display = 'none'
+      } else {
+        // 平台登录：显示账号登录
+        LoginUI.switchLoginTab('account')
+      }
+
+      // 注册模块初始化
+      ensureUniqueToggleBtn('password')
+      ensureUniqueToggleBtn('confirmPassword')
+      phoneInput = document.querySelector('.phone-input')
+      emailInput = document.querySelector('.email-input')
+      bindContactInputEvents()
+      if (phoneInput && emailInput) {
+        phoneInput.required = true
+        emailInput.required = false
+      }
+      function getBaseData(query) {
+        return fetch(webApiRoot + "DataOperation/GetBaseData", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(query)
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`)
+            }
+            return response.json()
+          })
+          .then(data => {
+            // 直接返回处理后的数据结构
+            return {
+              Code: data.Code,
+              Result: data.Result,
+              Message: data.Message || ''
+            }
+          })
+          .catch(error => {
+            console.error("getBaseData error:", error)
+            throw error
+          })
+      }
+
+      // QYVirtualPlat.Base_Enterprise_Info：根据URL参数entid进行筛选
+      function fetchBaseEnterpriseInfo() {
+        // 获取URL参数中的entid
+        const urlParams = new URLSearchParams(window.location.search)
+        let entIdParam = urlParams.get('entid')
+        // 确保参数被正确解码
+        if (entIdParam) {
+          entIdParam = decodeURIComponent(entIdParam)
+        }
+
+        // 构建查询字段
+        const fields = [
+          { "Name": "rowid", "AsName": null, "FieldType": "int", "OrderType": null, "Order": 0, "ValueFun": null, "Value": null, "Description": "ID", "IsPKey": false, "IsOutput": true, "Group": 0, "allowAIAdd": false, "aiSort": 0, "aiMemo": null, "DISTINCT": false, "defaultValue": null, "Expression": null, "IsMapToChild": null },
+          { "Name": "ShortCName", "AsName": null, "FieldType": "varchar", "OrderType": null, "Order": 0, "ValueFun": null, "Value": null, "Description": "弹出方式", "IsPKey": false, "IsOutput": true, "Group": 0, "allowAIAdd": false, "aiSort": 0, "aiMemo": null, "DISTINCT": false, "defaultValue": null, "Expression": null, "IsMapToChild": null },
+          { "Name": "ShortName", "AsName": null, "FieldType": "varchar", "OrderType": null, "Order": 0, "ValueFun": null, "Value": null, "Description": "弹出方式", "IsPKey": false, "IsOutput": true, "Group": 0, "allowAIAdd": false, "aiSort": 0, "aiMemo": null, "DISTINCT": false, "defaultValue": null, "Expression": null, "IsMapToChild": null }
+        ]
+
+        // 构建Filter结构
+        let filters = null
+        if (entIdParam) {
+          filters = {
+            "Type": "and",
+            "Filters": [
+              {
+                "Type": "or",
+                "Filters": [
+                  {
+                    "Type": "cond",
+                    "Field": "rowid",
+                    "Operator": "equal",
+                    "Value": null,
+                    "ValueFun": {
+                      "Type": "GetConstValue",
+                      "Value": entIdParam
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+
+        const query = {
+          Table: [
+            {
+              Name: "Base_Enterprise_Info",
+              Type: "数据库表",
+              DbName: "QYVirtualPlat",
+              Fields: fields
+            }
+          ]
+        }
+
+        // 如果有过滤条件，添加到第一个表中
+        if (filters) {
+          query.Table[0].Filter = filters
+        }
+
+        return getBaseData(query)
+      }
+
+      fetchBaseEnterpriseInfo().then((res) => {
+        console.log('获取企业信息返回：', res, res && res.Code === 200);
+        if (res && res.Code === 200) {
+          const enterprises = res.Result.data.Items || [];
+          renderEnterpriseSelect(enterprises);
+        }
+      })
+
+
+      function renderEnterpriseSelect(data) {
+        // 保存企业列表供注册表单使用
+        window.enterpriseList = data || []
+
+        const select = document.getElementById('loginCompanySelect')
+        const select1 = document.getElementById('loginCompanySelect1')
+        const select2 = document.getElementById('loginCompanySelect2')
+        const regCompanySelect = document.getElementById('reg-company')
+        if (!select && !regCompanySelect) return
+
+        // 获取URL参数中的entid（自动解码）
+        const urlParams = new URLSearchParams(window.location.search)
+        let entIdParam = urlParams.get('entid')
+        // 确保参数被正确解码
+        if (entIdParam) {
+          entIdParam = decodeURIComponent(entIdParam)
+        }
+
+        // 获取URL路径中的企业名称（如 /NewApp/ 中的 NewApp）
+        const pathMatch = window.location.pathname.match(/\/([\w]+)\//)
+        const mainTenantShortName = pathMatch ? pathMatch[1] : null
+
+        // 接口数据
+        const enterprises = data || []
+
+        // 先清空（保留第一个"请选择企业"）
+        if (select) select.innerHTML = '<option value="">请选择企业</option>'
+        if (select1) select1.innerHTML = '<option value="">请选择企业</option>'
+        if (select2) select2.innerHTML = '<option value="">请选择企业</option>'
+        if (regCompanySelect) regCompanySelect.innerHTML = '<option value="">请选择企业</option>'
+
+        enterprises.forEach((item) => {
+          // 防御性读取
+          const label = item.ShortCName
+          const value = item.rowid  // 使用 rowid 作为选择值
+          const entName = item.ShortName  // ShortName 用于后续的 entName 逻辑
+
+          // 必须同时存在
+          if (!label || !value || !entName) return
+
+          // 判断是否为主租户，如果是则添加标记
+          let displayLabel = label
+          if (mainTenantShortName && entName === mainTenantShortName) {
+            displayLabel = label + ' （主租户）'
+          }
+
+          const option = document.createElement('option')
+          option.value = value
+          option.dataset.entName = entName  // 将 entName 存储在 data 属性中，供后续使用
+          option.textContent = displayLabel
+
+          if (select) select.appendChild(option)
+          if (select1) select1.appendChild(option.cloneNode(true))
+          if (select2) select2.appendChild(option.cloneNode(true))
+          if (regCompanySelect) regCompanySelect.appendChild(option.cloneNode(true))
+        })
+
+        // 如果URL参数中有entid，则禁用下拉框并设置默认值
+        if (entIdParam) {
+          if (select) {
+            select.value = entIdParam
+            select.disabled = true
+            select.classList.add('opacity-50', 'cursor-not-allowed')
+            // 移除下拉箭头的pointer-events
+            const selectParent = select.closest('.relative')
+            if (selectParent) {
+              const arrow = selectParent.querySelector('.pointer-events-none')
+              if (arrow) {
+                arrow.style.display = 'none'
+              }
+            }
+          }
+
+          if (select1) {
+            select1.value = entIdParam
+            select1.disabled = true
+            select1.classList.add('opacity-50', 'cursor-not-allowed')
+          }
+
+          if (select2) {
+            select2.value = entIdParam
+            select2.disabled = true
+            select2.classList.add('opacity-50', 'cursor-not-allowed')
+          }
+
+          if (regCompanySelect) {
+            regCompanySelect.value = entIdParam
+            regCompanySelect.disabled = true
+            regCompanySelect.classList.add('opacity-50', 'cursor-not-allowed')
+          }
+
+          // 在全局存储entid，供查询时使用
+          window.entIdFilter = entIdParam
+        }
+      }
+
+
+      const displayTenantTypeBlock = function () {
+        const block = document.getElementById('tenantTypeBlock')
+        if (!block) return
+        const host = window.location.hostname || ''
+        if (!host.startsWith('192.168.')) {
+          block.style.display = 'none'
+        }
+      }
+
+      displayTenantTypeBlock()
+      // 只有在 192.168.* 网段访问时才显示“租户类型”区域
+    })
+
+    // 对外暴露（给 HTML onclick 用）
+    window.UI = UI
+    window.LoginUI = LoginUI
+  </script>
+</body>
+
+</html>

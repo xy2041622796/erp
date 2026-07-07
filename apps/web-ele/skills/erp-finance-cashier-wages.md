@@ -1,0 +1,28 @@
+# erp/finance/cashier/wages
+
+- 页面入口：`/erp/finance/cashier/wages`
+- 页面能力：查看工资表头表、工资表明细、导入占位、导出工资表/明细。
+- 方案接入规则：
+  - 页面查看与明细导出优先读取导入导出方案：`管理岗位工资导入导出方案`
+  - 通过 `Base_Import_solution / Base_ImportData_Config / Base_ImportData_Field` 读取方案、配置、字段顺序
+  - 目标表：`LMBill@Bil_Salary_Slip_Item`
+- 查看弹窗规则：
+  - 通过工资表 `rowid` 查询 `Bil_Salary_Slip_Item` 明细
+  - 按方案字段顺序展示基础字段与动态工资项字段
+  - 动态列标题优先使用方案字段标题，分类分组参考工资项元数据或明细项自身分类
+- 导出规则：
+  - 头表按工资表列表直接导出
+  - 明细导出优先按方案字段顺序与标题导出
+  - 明细导出会优先消费方案配置中的 `transformType / dynamicKeyField / dynamicValueField / groupKeyCols / dictJson`
+  - `dictJson` 同时兼容两种结构：旧结构对象映射、新结构数组映射
+  - 动态列导出默认以工资项编码 `item_code` 为 key；如果方案字段是中文标题，也会通过 `dictJson` 反查到编码后再取值
+  - 找不到方案时，回退到前端行转列兜底导出
+- 金额计算规则：
+  - 工资字段标准化入口：`src/views/finance/cashier/wages/salary-field-registry.ts`
+  - 公司承担合计已统一使用 `src/utils/finance/decimal-money.ts` 的 `addMoney + moneyNumber`，避免直接 `(companySocial + companyFund).toFixed(2)`。
+- 关键实现文件：
+  - `src/api/erp/import-design/scheme.ts`
+  - `src/views/finance/cashier/wages/index.vue`
+  - `src/views/finance/cashier/wages/modules/view.vue`
+  - `src/views/finance/cashier/wages/salary-field-registry.ts`
+  - `src/utils/importExportTransform.ts`

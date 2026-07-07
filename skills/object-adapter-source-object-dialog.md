@@ -1,0 +1,45 @@
+# object-adapter-source-object-dialog
+
+- 页面位置：`lmbill/apps/web-ele/src/views/erp/finance/settings/basic_data/modules/object-adapter-tab.vue`
+- 组件位置：
+  - `lmbill/apps/web-ele/src/components/app-db-selector/AppDbSelectModal.vue`
+  - `lmbill/apps/web-ele/src/components/field-selector/FieldSelectModal.vue`
+- 能力说明：为“新增适配器 / 编辑适配器”弹窗增加“来源系统下拉 + 来源对象弹窗选择 + 当前账套自动带入”能力；为“新增字段映射 / 编辑字段映射”弹窗增加“来源字段 / 标准字段 / 财务字段”弹窗选择能力。
+- 来源系统：适配器弹窗中的“来源系统”使用下拉展示，数据来自左侧已建好的来源系统列表（`fbsa_source_system`），并且默认选中当前左侧选中的来源系统。
+- 来源对象弹窗：两栏模式。
+  - 左栏：库列表，数据源 `db_relation_show`
+  - 右栏：表列表，数据源 `View_TblRelation_List`
+- 字段弹窗：单表字段列表模式。
+  - 数据源 `Base_TblField`
+  - 过滤参数 `tblid + IsSys=1`
+- 依赖接口：`getCurrentAppDatabasePage`、`getCurrentAppTablePage`、`getTableFieldPage`
+- 接口文件：`lmbill/apps/web-ele/src/api/erp/finance/settings/basic_data/business_standardization/source-system.ts`
+- 关键规则：
+  - 选中来源系统后，用 `source_code` 作为 `sysid`
+  - 左栏先查库
+  - 右栏再按 `sysid + dbid` 查表
+  - 字段弹窗的 `tblid` 不再从字段映射弹窗输入框取，而是从“当前选中的适配器主表记录”取：
+    - 来源字段：`当前适配器.source_biz_code`
+    - 标准字段：`当前适配器.standard_object_code`
+    - 财务字段：`当前适配器.finance_object_code`
+- 表查询参数：
+  - `Name = View_TblRelation_List`
+  - `Filter.sysid = 所选来源系统.source_code`
+  - `Filter.dbid = 左侧当前选中库.Id`
+  - `PageParam.size = 15`
+- 字段查询参数：
+  - `Name = Base_TblField`
+  - `Filter.tblid = 当前选中的适配器主表对象ID`
+  - `Filter.IsSys = 1`
+  - `PageParam.size = 15`
+- 自动回填：
+  - `source_system_id` 由来源系统下拉选择，新增时默认当前左侧来源系统
+  - `source_biz_code` 回填来源表 `id`
+  - `standard_object_code` 默认回填表中文名 `tbldesc`
+  - `finance_object_code` 默认回填表名 `tblname`
+  - `source_field` / `standard_field` / `finance_field` 由字段弹窗回填字段名 `enname`
+  - `account_set_id` 自动带入当前已选择账套 ID
+  - `rule_json` 自动生成来源表选择配置
+  - `sample_payload` 自动生成请求样例
+  - `remark` 自动追加来源系统、来源库、来源表、服务器、架构、类型信息
+- 适用场景：财务设置 > 基础资料 > 业务数据标准化 > 新增/编辑适配器、字段映射

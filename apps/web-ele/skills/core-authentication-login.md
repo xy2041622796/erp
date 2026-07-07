@@ -1,0 +1,25 @@
+# 登录页授权码扫码登录与账号绑定能力
+
+- 页面入口：`src/views/_core/authentication/login.vue`
+- 绑定组件：`src/views/_core/authentication/components/account-binding-panel.vue`
+- 路由入口：
+  - `/auth/login`：登录页
+  - `/auth/account-binding`：账号绑定路由，复用登录页组件并展示 `AccountBindingPanel` 绑定组件
+- 首页跳转：扫码登录成功、绑定成功且返回 token 后，统一跳转 `/erp/workbench`。
+- Token 存储：扫码登录和绑定登录统一调用登录页 `saveLoginToken`，通过 `useAccessStore()` 写入持久化字段：
+  - `accessStore.setAccessToken(...)`
+  - `accessStore.setRefreshToken(...)`
+  - 同时重置 `setIsAccessChecked(false)` 与 `setLoginExpired(false)`
+- Token 兼容字段：支持后端返回 `token/accessToken/access_token/AccessToken` 与 `refreshToken/xAccessToken/refresh_token/RefreshToken`。
+- 关联接口：
+  - `src/api/core/auth.ts` 的 `thirdPartyLogin`
+  - `src/api/core/auth.ts` 的 `thirdPartyBindAccount`
+- 页面能力：账号密码登录、手机验证码登录、微信扫码登录、企业微信扫码登录、未授权/未绑定后的账号绑定。
+- 地址策略：微信/企业微信授权回调使用固定基准地址 `https://spark.lingmacn.com/`；扫码发起时额外携带 `app_origin=window.location.origin`，用于把授权或绑定结果回传到扫码发起的当前站点。
+- 微信扫码：通过微信开放平台 `WxLogin` 获取授权码，登录类型为 `WECHAT_WEB`，`redirect_uri` 现在使用带 `/api` 的后端接口 `https://spark.lingmacn.com/api/thirdParty/auth/login?ent=...&type=WECHAT_WEB&app_origin=当前站点`，不再使用前端 `/auth/login?wechat_callback=1...` 作为接口回调。
+- 企业微信扫码：通过企业微信 `createWWLoginPanel` 获取授权码，登录类型为 `WECHAT_CORP_WEB`，`redirect_uri` 指向 `https://spark.lingmacn.com/api/thirdParty/auth/login`，并携带 `app_origin`。
+- 未授权/未绑定处理：第三方登录返回 `isBound` 或 `bindings` 时，不跳 `spark.lingmacn.com` 的回调地址，不跳旧 HTML；由当前站点父页面执行 `router.replace({ path: '/auth/account-binding', query: ... })`，进入当前地址下的 `/auth/account-binding`。
+- 绑定组件行为：组件内部维护账号、密码、提交状态和错误提示；父页面通过 `submit` prop 注入绑定提交函数，通过 `back` 事件返回账号登录。
+- 绑定接口：提交 `ent/type/token/username/password` 到 `/api/thirdParty/auth/bind`；绑定成功且返回 token 时保存 token 并进入 `/erp/workbench`，否则返回账号登录。
+- 二维码展示：`lm-qr-pic` 和 `lm-qr-container` 使用完整二维码尺寸 `320x380`，iframe 宽高 100%，不再缩放或裁剪。
+- UI 约束：绑定表单组件复用登录页原有 `lm-mobile-login-form`、`lm-mobile-field`、`lm-mobile-submit`、`lm-qr-tip`、`lm-qr-refresh` 样式；二维码仅按完整展示要求调整容器尺寸。

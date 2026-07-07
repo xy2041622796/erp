@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/views/erp/sale/out/data.ts",
+    "src/views/erp/sale/out/index.vue",
+    "src/views/erp/sale/out/modules/form.vue",
+    "src/views/erp/sale/out/modules/item-form.vue",
+    "src/views/erp/sale/out/modules/sale-order-select.vue",
+    "src/views/erp/purchase/in/data.ts",
+    "src/views/erp/purchase/in/index.vue",
+    "src/views/erp/purchase/in/modules/form.vue",
+    "src/views/erp/purchase/in/modules/item-form.vue",
+    "src/views/erp/purchase/in/modules/purchase-order-select.vue",
+    "src/api/erp/sale/out/index.ts",
+    "src/api/erp/purchase/in/index.ts"
+  ],
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  }
+}

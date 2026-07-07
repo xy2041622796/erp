@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/views/erp/purchase/in/data.ts",
+    "src/views/erp/purchase/in/modules/form.vue",
+    "src/views/erp/purchase/in/modules/item-form.vue",
+    "src/views/erp/purchase/in/modules/purchase-order-select.vue",
+    "src/views/erp/sale/return/data.ts",
+    "src/views/erp/sale/return/modules/form.vue",
+    "src/views/erp/sale/return/modules/item-form.vue",
+    "src/views/erp/sale/return/modules/sale-order-select.vue",
+    "src/views/erp/purchase/return/data.ts",
+    "src/views/erp/purchase/return/modules/form.vue",
+    "src/views/erp/purchase/return/modules/item-form.vue",
+    "src/views/erp/purchase/return/modules/purchase-order-select.vue",
+    "src/api/erp/purchase/in/index.ts",
+    "src/api/erp/sale/return/index.ts",
+    "src/api/erp/purchase/return/index.ts"
+  ],
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  }
+}

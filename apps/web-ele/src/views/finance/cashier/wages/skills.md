@@ -1,0 +1,29 @@
+# 工资汇总页面能力
+
+- 入口：`src/views/finance/cashier/wages/index.vue`
+- 当前页面能力：
+  - 查看工资表与工资明细
+  - 新建工资表
+  - 上传工资表、导入、导出、下载模板
+  - 点击“汇总计算当月工资”，按当前筛选月份自动生成并保存工资表
+  - 点击“月度结算规则”，进入结算参数维护页
+- 当月工资汇总按钮逻辑：
+  - 以当前筛选月份为工资月份；未选择时默认当月
+  - 汇总当前职级人员、工资项目元数据、职级工资项默认额、工资规则分配、考勤记录、请假加班记录
+  - 读取月度结算规则（加班倍率、病假/事假/年假/旷工折算、迟到早退固定扣款、归集工资项）
+  - 自动生成 `Bil_Salary_Slip` 与 `Bil_Salary_Slip_Item` 所需 payload，并直接保存工资表
+- 关联数据位置：
+  - 工资表：`LMBill / Bil_Salary_Slip`
+  - 工资明细：`LMBill / Bil_Salary_Slip_Item`
+  - 职级人员：`LMBill / Bas_Salary_Rank_Employee`
+  - 职级工资项：`LMBill / Bas_Salary_Rank_Item`
+  - 考勤记录：`LMBill / Bil_HR_Attendance_Records`
+  - 请假加班：`LMBill / Bil_HR_Attendance_Leave_Overtime`
+  - 月度结算规则：`LMBill / Bil_Salary_Rule`，规则类型 `ATTENDANCE`
+- 相关实现文件：
+  - `index.vue`
+  - `monthly-settlement.ts`
+  - `attendance-settlement-rules.ts`
+  - `modules/create.vue`
+  - `modules/view.vue`
+  - `src/views/finance/cashier/settings/attendanceSettlementRule/index.vue`

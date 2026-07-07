@@ -1,0 +1,36 @@
+# ERP业务维度台账页面（web-ele）
+
+- 页面入口：`lmbill/apps/web-ele/src/views/managementsys/dimension/result/index.vue`
+- 维度接口：`lmbill/apps/web-ele/src/api/erp/finance/dimension/index.ts`
+- 页面能力：查看业务维度台账主表，支持按事件编码、业务分类、维度分类、维度编码、维度值、需凭证、凭证状态等条件查询；支持展开查看子表维度明细、查看详情、导入、导出、单条生成凭证、多条合并生成 1 张凭证。
+- 操作列规则：
+  - 始终展示“查看详情”，点击后弹出维度结果明细弹窗。
+  - 当 `is_voucher_required=1` 且 `voucher_no` 为空时，展示“单条生成凭证”。
+  - 当 `voucher_no` 已存在时，不再展示“单条生成凭证”，凭证状态显示“已生成”。
+- 批量制证规则：
+  - 仅允许勾选“需凭证且未生成”的业务维度。
+  - 至少选择 2 条后可合并生成 1 张凭证。
+  - 所选记录不能跨账套；不同 `account_set_id` 会阻止合并制证。
+  - 明细按“方向 + 科目”聚合，借贷金额必须平衡。
+- 凭证生成能力：
+  - 单条生成调用 `ensureVoucherForDimensionSet(setId)`。
+  - 批量生成调用 `ensureVoucherForDimensionSets(setIds)`。
+  - 会读取 `Bil_Dimension_Set` 与 `Bil_Dimension_Detail`，提取 `dim_category=FINANCIAL` 且 `dim_code=SUBJECT` 的明细生成凭证分录。
+  - 会调用凭证接口 `createVoucher()`、`getNextVoucherCodeByDate()`，并通过 `resolveVoucherDateByPeriodStatus()` 处理会计期间可用日期。
+  - 制证成功后回写维度主表 `Bil_Dimension_Set.voucher_no`。
+- 凭证月份提示规则：
+  - 凭证源日期优先取 `Bil_Dimension_Set.biz_date`，其次取 `updatetime`、`createtime`、当前时间。
+  - 生成前通过 `resolveVoucherDateByPeriodStatus()` 判断凭证日期；如果原业务月份已结转并关账，系统会顺延到下一个可用月份。
+  - 接口返回 `source_voucher_period`、`resolved_voucher_period`、`voucher_date_shifted`；页面在发生顺延时提示：`原业务月份 YYYY-MM 已结转并关账，凭证已顺延生成到 YYYY-MM。`
+- 账套规则：
+  - 凭证主表与分录的 `account_set_id` 来自 `Bil_Dimension_Set.account_set_id`。
+  - 合并生成时只能合并同一账套数据。
+- 关联数据表：
+  - `Bil_Dimension_Set`
+  - `Bil_Dimension_Detail`
+  - 凭证主表/凭证明细表，由 `createVoucher()` 内部写入。
+  - `fin_period_status`，用于判断结转/关账状态与顺延月份。
+- 依赖接口文件：
+  - `lmbill/apps/web-ele/src/api/erp/finance/voucher/index.ts`
+  - `lmbill/apps/web-ele/src/api/erp/finance/period-status/index.ts`
+  - `lmbill/apps/web-ele/src/api/erp/finance/settings/project.ts`

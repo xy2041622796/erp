@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/2041622796/Desktop/lmbill-master/**)",
+      "Read(//c/Users/2041622796/Desktop/lmbill-master/apps/web-ele/src/router/routes/**)",
+      "Read(//c/Users/2041622796/Desktop/lmbill-master/apps/web-ele/src/api/erp/finance/**)",
+      "Bash(node -e ' *)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

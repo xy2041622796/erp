@@ -1,0 +1,43 @@
+{
+  "Table": [
+    {
+      "Name": "Bil_HR_Attendance_Records",
+      "DbName": "LMBill",
+      "PrimaryKeyFields": "id",
+      "Type": "数据库表",
+      "OutputType": "Table",
+      "Fields": [
+        { "AsName": "", "Group": 0, "Name": "id", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "attendance_code", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "user_dj_rowid", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "user_rowid", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "dep_id", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "job_rowid", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "attendance_date", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "check_in_at", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "check_in_type", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "check_out_at", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "check_out_type", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "work_minutes", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "status", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "remark", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "createuser", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "createtime", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "updateuser", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "updatetime", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "wfid", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "flowstate", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "ReportID", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "description", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "lingma_sys_is_delete", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "lingma_sys_ent", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "source_system", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "source_table", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "source_id", "Order": 0, "OrderType": null },
+        { "AsName": "", "Group": 0, "Name": "migration_batch_no", "Order": 0, "OrderType": null }
+      ],
+      "Filter": null,
+      "inputParams": []
+    }
+  ]
+}

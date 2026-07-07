@@ -1,0 +1,24 @@
+# 财务期末处理页面
+
+- 页面入口：`lmbill/apps/web-ele/src/views/finance/cwhs/treatment/period/index.vue`
+- 兼容入口：`lmbill/apps/web-ele/src/views/erp/settings/period-close/index.vue`
+- 核心结账接口：`lmbill/apps/web-ele/src/api/erp/finance/period/index.ts`
+- 期间状态接口：`lmbill/apps/web-ele/src/api/erp/finance/period-status/index.ts`
+- 数据模型：`fin_period_status`
+- modelId：`7587CA78903525BBA582048E98660C22`
+- 页面能力：
+  - 按年度展示会计期间状态。
+  - 支持“期末处理 / 反结账”两个页签切换。
+  - 页面顶部已通过 `period-page-shell` 与 `.period-page` 样式去除额外上边距，页签贴近内容区顶部显示。
+  - 支持按账套、公司、年度过滤。
+  - 点击月份卡片后，按该卡片 `account_set_id` 拉取凭证、科目、期间状态并进行结账或反结账校验。
+  - 期末结账支持结转损益、12 月年终结转利润、回写期间状态、年终同步下一年度期初。
+  - 反结账支持校验后续已结账期间、保留原结转损益凭证、恢复为已结转损益未结账。
+- 账套维度规则：
+  - 查询科目、凭证主表、凭证明细、期间状态时均需要传入或解析 `accountSetId`。
+  - 新生成的期末结转业务号带账套维度：`PERIOD-CLOSE-{accountSetId}-{period}`，年终结转业务号：`PERIOD-PROFIT-{accountSetId}-{period}`。
+  - 预览核验仍兼容历史业务号：`PERIOD-CLOSE-{period}` / `PERIOD-PROFIT-{period}`，但数据集本身必须按账套过滤，避免多个账套反复核验、复用或拦截同一期间的结转凭证。
+- 状态定义：
+  - `carry_forward_status=0 && close_status=0`：未结转损益、未结账。
+  - `carry_forward_status=1 && close_status=0`：已结转损益、未结账。
+  - `carry_forward_status=1 && close_status=1`：已结转损益、已结账。

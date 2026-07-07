@@ -1,0 +1,212 @@
+import type { Router, RouteRecordRaw } from 'vue-router';
+
+import type {
+  AppRouteRecordRaw,
+  ExRouteRecordRaw,
+  MenuRecordRaw,
+  RouteMeta,
+  RouteRecordStringComponent,
+} from '@vben-core/typings';
+
+import { filterTree, isHttpUrl, mapTree } from '@vben-core/shared/utils';
+
+/**
+ * 根据 routes 生成菜单列表
+ * @param routes - 路由配置列表
+ * @param router - Vue Router 实例
+ * @returns 生成的菜单列表
+ */
+function generateMenus(
+  routes: RouteRecordRaw[],
+  router: Router,
+): MenuRecordRaw[] {
+  // 将路由列表转换为一个以 name 为键的对象映射
+  const finalRoutesMap: { [key: string]: string } = Object.fromEntries(
+    router.getRoutes().map(({ name, path }) => [name, path]),
+  );
+
+  let menus = mapTree<ExRouteRecordRaw, MenuRecordRaw>(routes, (route) => {
+    // 获取最终的路由路径
+    const path = finalRoutesMap[route.name as string] ?? route.path ?? '';
+
+    const {
+      meta = {} as RouteMeta,
+      name: routeName,
+      redirect,
+      children = [],
+    } = route;
+    const {
+      activeIcon,
+      badge,
+      badgeType,
+      badgeVariants,
+      hideChildrenInMenu = false,
+      icon,
+      link,
+      order,
+      title = '',
+    } = meta;
+
+    // 确保菜单名称不为空
+    const name = (title || routeName || '') as string;
+
+    // 处理子菜单
+    const resultChildren = hideChildrenInMenu
+      ? []
+      : ((children as MenuRecordRaw[]) ?? []);
+
+    // 设置子菜单的父子关系
+    if (resultChildren.length > 0) {
+      resultChildren.forEach((child) => {
+        child.parents = [...(route.parents ?? []), path];
+        child.parent = path;
+      });
+    }
+
+    // 确定最终路径
+    const resultPath = hideChildrenInMenu ? redirect || path : link || path;
+
+    return {
+      activeIcon,
+      badge,
+      badgeType,
+      badgeVariants,
+      icon,
+      name,
+      order,
+      parent: route.parent,
+      parents: route.parents,
+      path: resultPath,
+      show: !meta.hideInMenu,
+      children: resultChildren,
+    };
+  });
+
+  // 对菜单进行排序，避免order=0时被替换成999的问题
+  menus = menus.toSorted((a, b) => (a?.order ?? 999) - (b?.order ?? 999));
+
+  // 过滤掉隐藏的菜单项
+  return filterTree(menus, (menu) => !!menu.show);
+}
+
+/**
+ * 转换后端菜单数据为路由数据
+ * @param menuList 后端菜单数据
+ * @param parent 父级菜单
+ * @param nameSet 用于跟踪已使用的 name，防止重复
+ * @returns 路由数据
+ */
+function convertServerMenuToRouteRecordStringComponent(
+  menuList: AppRouteRecordRaw[],
+  parent = '',
+  nameSet: Set<string> = new Set(),
+): RouteRecordStringComponent[] {
+  const menus: RouteRecordStringComponent[] = [];
+  menuList.forEach((menu) => {
+    const hasChildren = Array.isArray(menu.children) && menu.children.length > 0;
+    // 处理顶级链接菜单
+    if (isHttpUrl(menu.path) && String(menu.parentId) === '0') {
+      const urlMenu: RouteRecordStringComponent = {
+        component: 'IFrameView',
+        meta: {
+          hideInMenu: !menu.visible,
+          icon: menu.icon,
+          link: menu.path,
+          orderNo: menu.sort,
+          title: menu.name,
+        },
+        name: menu.name,
+        path: `/${menu.path}/index`,
+      };
+      menus.push(urlMenu);
+      return;
+    } else if (hasChildren && String(menu.parentId) === '0') {
+      menu.component = 'BasicLayout';
+    } else if (!hasChildren) {
+      menu.component = menu.component as string;
+    }
+    if (menu.component === 'Layout') {
+      menu.component = 'BasicLayout';
+    }
+
+    if (hasChildren && String(menu.parentId) !== '0') {
+      menu.component = '';
+    }
+
+    // path
+    if (parent) {
+      const currentPath = String(menu.path || '').replace(/^\/+/, '');
+      const parentPath = String(parent || '').replace(/^\/+/, '').replace(/\/+$/, '');
+
+      // 后端可能已经返回带父级前缀的路径，例如 erp/inventory-accounting。
+      // 这种路径不能再和 /erp 父节点拼接，否则会变成 /erp/erp/inventory-accounting，
+      // 导致动态路由 component key 与 views 文件路径不一致。
+      if (
+        currentPath === parentPath ||
+        currentPath.startsWith(`${parentPath}/`)
+      ) {
+        menu.path = currentPath;
+      } else {
+        menu.path = `${parentPath}/${currentPath}`;
+      }
+    }
+
+    if (!menu.path.startsWith('/')) {
+      menu.path = `/${menu.path}`;
+    }
+
+    // 如果组件是相对路径（例如 'customer/index'）且有父级路径，则把父级路径拼接到组件前面，
+    // 这样可以匹配到 pageMap 中的 ' /crm/customer/index.vue' 等真实视图文件。
+    if (
+      menu.component &&
+      typeof menu.component === 'string' &&
+      parent &&
+      !isHttpUrl(menu.component)
+    ) {
+      const comp = menu.component.replace(/^\/+/, '');
+      const parentNoSlash = parent.replace(/^\/+/, '').replace(/\/+$/, '');
+      // 如果组件路径已经包含父级前缀，则不再重复拼接
+      if (!comp.startsWith(parentNoSlash)) {
+        menu.component = `${parent}/${comp}`;
+      } else {
+        // 保持不以 '/' 开头的相对路径，后续 normalize 会处理
+        menu.component = comp;
+      }
+    }
+
+    // add by 芋艿：防止 name 重复，只有在 name 重复时，才自动添加 id
+    let finalName = menu.componentName || menu.name;
+    if (nameSet.has(finalName)) {
+      finalName = menu.name + menu.id;
+      console.warn(`menu name duplicate: ${menu.name}, id: ${menu.id}, rename to: ${finalName}`, menu);
+    }
+    nameSet.add(finalName);
+
+    const buildMenu: RouteRecordStringComponent = {
+      component: menu.component,
+      meta: {
+        hideInMenu: !menu.visible,
+        icon: menu.icon,
+        keepAlive: menu.keepAlive,
+        orderNo: menu.sort,
+        title: menu.name,
+        __rawComponent: menu.component,
+      },
+      name: finalName,
+      path: menu.path,
+    };
+
+    if (menu.children && menu.children.length > 0) {
+      buildMenu.children = convertServerMenuToRouteRecordStringComponent(
+        menu.children,
+        menu.path,
+        nameSet,
+      );
+    }
+
+    menus.push(buildMenu);
+  });
+  return menus;
+}
+
+export { convertServerMenuToRouteRecordStringComponent, generateMenus };

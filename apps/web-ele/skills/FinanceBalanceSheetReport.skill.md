@@ -1,0 +1,30 @@
+# FinanceBalanceSheetReport
+
+- 页面入口：`apps/web-ele/src/views/finance/cwhs/reports/balance-sheet/index.vue`
+- 路由入口：`/finance/cwhs/reports/balance-sheet?moduleScope=finance&source=finance-workbench&entry=报表中心`
+- 相关接口：`apps/web-ele/src/api/erp/finance/reports/index.ts` 中的 `fetchBalanceSheetReport`
+- 关联接口：`apps/web-ele/src/api/erp/finance/settings/accountset` 中的 `getAccountCurrentAccount`
+- 打印模板：`apps/web-ele/src/views/finance/print-templates/balance-sheet.ts` 中的 `buildBalanceSheetPrintHtml`
+- 页面能力：展示资产负债表，按资产、负债和所有者权益两栏对照显示期末余额与年初余额，并支持打印、导出、报表分享、刷新。
+- 当前表格列宽：
+  - 页面表格中“行次”列使用 `.finance-report-table .w-line` 控制，当前宽度为 `60px`，左右两侧行次列统一缩窄但保留单行展示。
+  - 页面“行次”列表头设置 `white-space: nowrap`，避免被压成“行/次”两行。
+  - 页面金额列“期末余额 / 年初余额”使用 `.finance-report-table .w-amount` 控制，当前宽度为 `130px`；金额列缩小后，“资产”和“负债和所有者权益”两列获得更多剩余宽度。
+  - 打印模板中两处“行次”表头宽度为 `6%`，并设置 `white-space: nowrap`。
+  - 打印模板中四处金额列“期末余额 / 年初余额”宽度为 `11%`，用于给两侧名称列释放更多宽度。
+- 当前筛选交互：
+  - 顶部期间按钮使用系统主题色展示当前会计月份
+  - 鼠标 hover 后展开筛选面板
+  - 面板内使用“年份下拉 + 月份下拉”选择会计期间
+  - 点击“确定”后应用筛选，点击“重置”恢复到当前自然月
+- 页面计算逻辑：
+  - 页面基于接口返回的 `assetRows`、`liabilityRows`、`equityRows` 按科目前缀归集标准报表行
+  - 资产负债表中的“年初余额”取上一年度 12 月期末余额，对应接口字段 `year_beginning_balance`；当年建账时年初余额按 0 展示
+  - 资产负债表中的“期末余额”按所选月份结账后的余额展示，即年初余额加本年截至所选月份的累计发生额
+  - 自动汇总流动资产、非流动资产、流动负债、非流动负债、所有者权益及总计行
+- 金额计算规则：
+  - 金额展示使用 `src/utils/finance/decimal-money.ts` 的 `moneyText`。
+  - 科目前缀归集使用 `addMoney/moneyNumber`。
+  - 固定资产账面价值使用 `subMoney` 计算原价减累计折旧。
+  - 流动资产、非流动资产、资产总计、流动负债、非流动负债、负债合计、所有者权益合计、负债和所有者权益总计使用 `sumByMoney/addMoney/moneyNumber`。
+- 适用场景：统一财务报表顶部筛选体验，并确保资产负债表的“年初余额 / 期末余额”口径符合财务报表定义；后续调整资产负债表页面或打印列宽时优先复用现有表格与打印模板结构。

@@ -1,0 +1,21 @@
+# 人员管理页面
+
+- 页面入口：`src/views/erp/HumanResources/staff/index.vue`
+- 菜单组件路径：`erp/HumanResources/staff/index`
+- 页面能力：人员列表、人员新增编辑删除、性别字典、岗位/角色/导航权限展示。
+- 页面查询：查询栏位于页面顶部标题栏下方、人员表格上方；支持姓名/登录名关键字查询，回车或点击“查询”触发刷新。
+- 表格布局：最后一列“操作”使用 Element Plus 表格固定列 `fixed="right"`，横向滚动时保持在右侧可见。
+- 列格式：出生日期列统一显示为 `yyyy-MM-dd`；兼容 `yyyyMMdd`、`yyyy-MM-dd`、`yyyy-MM-dd HH:mm:ss`、ISO 日期字符串。
+- 接口来源：`src/api/erp/human-resources/organ/index.ts`。
+- 接口 FormKey/formid：人员管理页面使用 `STAFF_FORM_ID=32FF5B9BB0DD7CFC668DE9DC8BBFB1CD`。
+- 注意：组织机构页面使用独立 `ORGAN_FORM_ID=64A02514479C4350ACE92FC1F8BFB485`，不要覆盖人员管理页面 formid。
+- 人员主数据：`view_user_dj`，通过 `/api/DataOperation/GetData` 查询，保存删除通过 `QYVirtualPlat@view_user_dj` 的 CRUD 批量接口提交。
+- 导航权限：`view_topnav_user_role`，按 `userid` 聚合 `FunName` 后展示到“权限查看”。
+- 性别字典：`user_sex`，字段使用 `txt` 作为显示文本、`val` 作为提交值，页面表单字段为 `Sex`。
+- HTML 渲染列：`部门/岗位`、`担任角色`、`权限查看` 支持 `<br>`、`&lt;br&gt;` 和换行符渲染为换行；渲染前会剥离其它 HTML 标签并转义文本，避免注入风险。
+- 点击能力：`部门/岗位`、`担任角色`、`权限查看` 每条文本会渲染为可点击链接，点击后打开当前行人员的编辑弹窗。
+- 编辑弹窗布局：按人员编辑截图实现，左侧为两列基础资料表单，右侧为图片预览区，底部右侧显示“取消/保存”按钮。
+- 图片预览：右侧图片区会从人员数据的 `PhotoUrl/photoUrl/Photo/photo/PictureUrl/ImageUrl/ImgUrl/Avatar/HeadImage/HeadImg/Portrait/PhotoPath` 等 URL 字段中取第一个非空值；有 URL 时展示图片预览，没有 URL 时显示“暂无图片”。
+- 编辑弹窗字段：`UserName`、`Sex`、`LoginName`、`LoginPass`、`IDCard`、`Nation`、`MaritalStatus`、`Age`、`State`、`NativePlace`、`PermanentTenancy`、`Address`、`memo`。
+- 关键列表字段：`UserName`、`LoginName`、`Sex`、`Age`、`Birthday`、`entInfoUserPhone`、`user_jobs`、`user_roles`、`ROWID`。
+- 页面内顶部人资按钮：已移除，页面切换统一使用系统左侧菜单/顶部标签导航。

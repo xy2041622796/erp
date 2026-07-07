@@ -1,0 +1,28 @@
+# ERP Finance Settings Auth Role Permission Dialog
+
+- 页面入口：`src/views/erp/finance/settings/auth/index.vue`
+- 权限接口封装：`src/api/erp/finance/settings/auth/permission.ts`
+- 页面能力：
+  - 左侧选择帐套
+  - 右侧展示当前帐套下的角色与人员配置
+  - 在每个角色名称后增加“权限设置”入口
+  - 点击后打开角色权限弹窗，按“功能模块 / 操作权限”两列展示
+  - 支持展开全部、收起全部、全选、清空与保存
+- 使用接口：
+  - `getRoleHostOptions`
+  - `getRoleOptionsBySysId`
+  - `saveRoleUser`
+  - `getFunctionTreeByRole`
+  - `saveRolePermissions`
+- 接口来源：
+  - 权限读取与保存逻辑对齐 `datamanagement` 中“村级记录员 - 权限设置”弹窗使用的 `Base_NavigationInfo`、`_Base_FunctionNode`、`FunctionNodeAuth` 方案
+  - `SYS_ID` 使用 `359875B2804FCDBD0F2DCC567D2A22F1`
+- 保存参数修正：
+  - 保存时优先使用角色源记录 `rowid` 作为 `QID`
+  - `QName` 按参考页逻辑自动补齐级别前缀
+  - `roleClassId` 优先取 `DepLevelCode`，其次取 `JobLevel`
+  - `masterName` 置空，和参考页保持一致
+- 交互说明：
+  - 权限设置入口放在 `erp/finance/settings/auth` 页面每个角色行的末尾
+  - 弹窗样式参考 datamanagement 的权限设置弹窗
+  - 弹窗内容区限制高度，超出时内部滚动

@@ -1,0 +1,29 @@
+# erp/finance/revenue/submit
+
+- 页面能力：收款提报列表查询、新增、编辑、详情、删除、确认。
+- 本次扩展：点击“确认”时，除了把单据状态更新为“已确认”，还会自动在财务凭证中生成一张凭证。
+- 凭证入口：财务 -> 凭证（`src/views/finance/Voucher/index.vue`）。
+- 页面文件：`src/views/finance/revenue/submit/index.vue`
+- API 文件：`src/api/erp/finance/revenue/submit/index.ts`
+- 明细表单：`src/views/finance/revenue/submit/modules/form.vue`、`src/views/finance/cwhs/revenue/submit/modules/form.vue`
+- 其他收入明细：`src/views/finance/revenue/other/modules/item-form.vue`、`src/views/finance/cwhs/revenue/other/modules/item-form.vue`
+- 收款结算明细：`src/views/finance/revenue/settlement/modules/item-form.vue`、`src/views/finance/cwhs/revenue/settlement/modules/item-form.vue`
+- 金额计算规则：
+  - 收款提报表单的核销合计、默认申请金额、编辑申请金额和展示使用 `sumByMoney/moneyNumber/moneyText`。
+  - 其他收入明细的金额小计、按税率计算税额、合计使用 `sumByMoney/mulMoney/divMoney/addMoney/moneyNumber/moneyText`。
+  - 收款结算明细的金额小计、税额、合计和金额展示使用 `sumByMoney/addMoney/moneyNumber/moneyText`。
+  - 收款结算主表单的价税合计、税率、单价、来源单据金额、合同余额使用 `addMoney/subMoney/mulMoney/divMoney/sumByMoney/moneyNumber/moneyText`。
+  - 收款结算销售订单选择弹窗金额列展示使用 `moneyText`。
+- 依赖数据：
+  - 收款提报表 `Bil_Collection_Submit`
+  - 凭证主表 `Bil_Voucher_Main`
+  - 凭证明细表 `Bil_Voucher_Detail`
+  - 科目表 `Bil_Subject_Info`
+  - 结算账户表 `erp_account`
+- 联动逻辑：
+  - 业务收款：默认尝试生成 借：银行存款子级/库存现金末级，贷：应收账款末级
+  - 预收款收款：默认尝试生成 借：银行存款子级/库存现金末级，贷：预收账款/合同负债末级
+  - 若已存在同 `business_url=erp/finance/revenue/submit` 且 `business_code=提报单号` 的凭证，则不重复生成
+  - 生成前先判断期间状态；若所属月份已结转且已关账，则凭证自动顺延到下一可用期间
+  - 银行存款不允许使用父级科目，必须匹配到末级银行子科目；优先按单据中的收款账户名称匹配
+- 备注：当前凭证科目采用前端按账套科目名称/编码自动匹配的最小方案；若你们有固定科目映射规则，建议后续再沉到统一配置。

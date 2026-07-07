@@ -1,0 +1,30 @@
+export const detailSections = {
+  base: [
+    { label: '商机编号', field: 'businessCode' },
+    { label: '商机名称', field: 'businessName' },
+    { label: '客户名称', field: 'customerName' },
+    { label: '主联系人', field: 'primaryContactName' },
+    { label: '来源线索', field: 'sourceLeadName' },
+    { label: '预计金额', field: 'amount', type: 'amount' },
+    { label: '产品总金额', field: 'totalProductPrice', type: 'amount' },
+    { label: '整单折扣（%）', field: 'discountPercent' },
+    { label: '折扣后金额', field: 'amount', type: 'amount' },
+    { label: '预计签约时间', field: 'expectedSignDate', type: 'datetime' },
+    { label: '成交概率', field: 'successRate', type: 'percent' },
+  ],
+  owner: [
+    { label: '负责人', field: 'ownerUserName' },
+    { label: '部门', field: 'departName' },
+    { label: '创建时间', field: 'createtime', type: 'datetime' },
+    { label: '更新时间', field: 'updatetime', type: 'datetime' },
+  ],
+  status: [
+    { label: '商机阶段', field: 'businessStage', type: 'stage' },
+    { label: '商机状态', field: 'businessStatus', type: 'status' },
+    { label: '最近跟进时间', field: 'lastFollowTime', type: 'datetime' },
+    { label: '下次跟进时间', field: 'nextFollowTime', type: 'datetime' },
+    { label: '最近跟进摘要', field: 'lastFollowContent' },
+    { label: '输单原因', field: 'lostReason' },
+    { label: '备注', field: 'remark' },
+  ],
+};

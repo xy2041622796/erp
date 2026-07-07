@@ -1,0 +1,33 @@
+# ERP Workbench Dynamic Apps
+
+- 能力：工作台首页“子系统入口/我的应用”动态读取当前权限菜单的顶层导航并渲染成应用入口卡片，菜单越多展示越多。
+- 入口页面：`apps/web-ele/src/views/erp/workbench/index.vue`；历史入口说明中的 `apps/web-ele/src/views/workbench/erp-workbench/index.vue` 为同类工作台页面。
+- 依赖数据：`@vben/stores` 的 `accessStore.accessMenus`
+- 渲染规则：
+  - 过滤掉工作台自身相关入口（如 `/erp/workbench`、各模块 workbench 路径）
+  - 过滤掉 `moduleScope === 'oa'` 的协同云入口，使首页“子系统入口”和“全部子系统入口”不展示协同云卡片
+  - 以顶层菜单的 `name`、`icon` 为主数据源
+  - 卡片描述根据子菜单或菜单描述自动生成
+  - 首页默认展示前 7 个入口，更多入口通过“查看全部”弹窗展示
+- 跳转路径规则：
+  - 先根据父级路径与首个可用子级路径推导 `moduleScope`
+  - `/archives`、`/archives/data-management` 会推导为 `moduleScope: archives`
+  - 只要能识别出 `moduleScope`，无论是否有 `children`，都统一跳到对应模块工作台或模块入口
+  - 无法识别 `moduleScope` 时，优先使用首个子级叶子路径；若没有 `children` 再回退使用父级路径
+- moduleScope 映射：
+  - `archives -> /archives/data-management`
+  - `contract -> /contract/dashboard`
+  - `project -> /project/dashboard`
+  - `hr -> /erp/hr/workbench`
+  - `oa -> /oa/workbench`，但首页子系统入口已隐藏该入口
+  - `supply -> /erp/purchase/workbench`
+  - `finance -> /finance/workbench`
+  - `system -> /managementsys/workbench`
+- 查询参数：
+  - `moduleScope`：用于模块范围切换与导航过滤；档案资料管理入口打开时应携带 `moduleScope=archives`
+- 跳转打开规则：
+  - 子系统入口、全部子系统入口、待办事项、快捷入口统一使用 `router.push({ path, query })` 在当前 SPA 内跳转，不再使用 `openWindow(..., { target: '_blank' })` 新开浏览器页签。
+  - 站外 HTTP URL 不走 Vue Router，降级为当前页 `window.location.href = url`。
+- 待办/快捷操作：
+  - 当前示例数据统一使用模块工作台路径，并显式携带对应 `moduleScope`
+- 适用场景：当顶部横向导航通过 `meta.hideHeaderNav` 隐藏时，将原本的动态导航入口迁移到工作台页面内展示，并兼容“有 children / 无 children”两类菜单结构。
