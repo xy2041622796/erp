@@ -435,12 +435,12 @@ const departmentTypeLabelMap = computed(() => new Map(departmentTypeOptions.valu
 const jobTypeLabelMap = computed(() => new Map(jobTypeOptions.value.map((item) => [normalizeText(item.value), normalizeText(item.label)])))
 const entityDepartmentLabel = computed(() => departmentTypeLabelMap.value.get('1') || '实体部门')
 const nonEntityDepartmentLabel = computed(() => departmentTypeLabelMap.value.get('0') || '非实体部门')
-const canAddDepartment = computed(() => Boolean(currentDepartment.value) && normalizeNumber(currentDepartment.value?.DepLevel) < MAX_DEPARTMENT_LEVEL && canAddDepartmentData())
+const canAddDepartment = computed(() => canAddDepartmentData() && (!currentDepartment.value || normalizeNumber(currentDepartment.value?.DepLevel) < MAX_DEPARTMENT_LEVEL))
 const canEditDepartment = computed(() => canDepartmentRowEdit(currentDepartment.value))
 const canDeleteDepartment = computed(() => Boolean(currentDepartment.value) && normalizeText(currentDepartment.value?.DepLevelCode) !== '0' && canDepartmentRowDelete(currentDepartment.value))
 const canAddJob = computed(() => Boolean(currentDepartment.value) && canAddJobData())
 const canDeleteJob = computed(() => Boolean(currentDepartment.value && isExclusiveJob(currentJobRow.value) && canJobRowDelete(currentJobRow.value)))
-const departmentDialogSubmitDisabled = computed(() => departmentDialog.mode === 'add' ? !canAddDepartment.value : !canEditDepartment.value)
+const departmentDialogSubmitDisabled = computed(() => departmentDialog.mode === 'add' ? !canAddDepartmentData() : !canEditDepartment.value)
 
 function normalizeText(value: unknown) {
 	return String(value ?? '').trim()
@@ -1076,7 +1076,7 @@ function assertDepartmentUniqueness() {
 	const depShortName = normalizeText(departmentForm.DepShortName).toLowerCase()
 	const currentRowid = departmentDialog.mode === 'edit' ? normalizeText(currentDepartment.value?.rowid) : ''
 	const parentDepId = departmentDialog.mode === 'add'
-		? normalizeText(currentDepartment.value?.DepID)
+		? normalizeText(currentDepartment.value?.DepID || ROOT_PARENT_ID)
 		: normalizeText(currentDepartment.value?.Prowid || ROOT_PARENT_ID)
 
 	const siblingList = flatDepartmentList.value.filter((item) => {
@@ -1309,12 +1309,11 @@ async function handleSaveJobUserSettings() {
 }
 
 function handleAddDepartment() {
-	if (!currentDepartment.value || !canAddDepartment.value) {
-		ElMessage.warning('请先选择父级部门')
+	if (!canAddDepartment.value) {
 		return
 	}
 
-	if (normalizeNumber(currentDepartment.value.DepLevel) >= MAX_DEPARTMENT_LEVEL) {
+	if (currentDepartment.value && normalizeNumber(currentDepartment.value.DepLevel) >= MAX_DEPARTMENT_LEVEL) {
 		ElMessage.warning('部门级别到 4 后不允许再添加子级部门')
 		return
 	}
@@ -1391,11 +1390,6 @@ async function handleDepartmentDialogConfirm() {
 		return
 	}
 
-	if (departmentDialog.mode === 'add' && !currentDepartment.value) {
-		ElMessage.warning('请先选择父级部门')
-		return
-	}
-
 	const enterpriseId = getCurrentEnterpriseId()
 	if (departmentDialog.mode === 'add' && !enterpriseId) {
 		ElMessage.error('当前用户缺少 EntId，无法新增部门')
@@ -1407,8 +1401,9 @@ async function handleDepartmentDialogConfirm() {
 		let targetSelectedDepId = selectedDepartmentId.value
 
 		if (departmentDialog.mode === 'add') {
+			const parentDepartment = currentDepartment.value || ({ DepID: ROOT_PARENT_ID, DepLevel: 0, DepLevelCode: '0', CSR: '', zwSCR: '' } as OrganizationDepartmentRecord)
 			const result = await createDepartment({
-				parentDepartment: currentDepartment.value as OrganizationDepartmentRecord,
+				parentDepartment,
 				enterpriseId,
 				depName: departmentForm.DepName,
 				depShortName: departmentForm.DepShortName,

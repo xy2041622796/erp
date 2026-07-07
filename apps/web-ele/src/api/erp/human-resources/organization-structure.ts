@@ -751,11 +751,7 @@ export async function getDepartmentJobList(depId: string) {
 
   // 岗位表直接查，补充视图可能漏掉的无人员新岗位
   const jobTable = createJobTable('ID')
-  jobTable.Filter = or(
-    cond('Depid', 'equal', normalizedDepId),
-    cond('Depid', 'isnull', null),
-    cond('Depid', 'equal', '')
-  )
+  jobTable.Filter = cond('Depid', 'equal', normalizedDepId)
   const jobResponse = await requestClient.post(jobTable.queryUrl, {
     Table: [jobTable],
     PageParam: { page: 9999, index: 1 }
