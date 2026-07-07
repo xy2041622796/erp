@@ -549,7 +549,7 @@ export async function createUserManagementUser(payload: SaveUserManagementPayloa
     ID: id
   })
 
-  await saveTable(table, [savePayload], [], [])
+  await saveTable(table, [{ ...savePayload, ROWID: id }], [], [])
 
   try {
     const userId = await getCodeString(id, USER_CODE_TEMPLATE_ID)
