@@ -52,7 +52,7 @@
     "@videojs-player/vue": "catalog:",
     "@vueuse/core": "catalog:",
     "@vueuse/integrations": "catalog:",
-    "@wecom/jssdk": "^2.4.0",
+    "@wecom/jssdk": "^2.4.4",
     "benz-amr-recorder": "catalog:",
     "cropperjs": "catalog:",
     "dayjs": "catalog:",
