@@ -20,31 +20,31 @@ catalog:
   '@clack/prompts': ^0.11.0
   '@commitlint/cli': ^19.8.1
   '@commitlint/config-conventional': ^19.8.1
-  '@ctrl/tinycolor': ^4.1.0
+  '@ctrl/tinycolor': ^4.2.1
   '@eslint/js': ^9.39.1
   '@faker-js/faker': ^9.9.0
   '@form-create/ant-design-vue': ^3.2.27
   '@form-create/antd-designer': ^3.3.0
-  '@form-create/designer': ^3.3.0
-  '@form-create/element-ui': ^3.2.27
+  '@form-create/designer': ^3.5.0
+  '@form-create/element-ui': ^3.3.4
   '@form-create/naive-ui': ^3.2.27
-  '@iconify/json': ^2.2.406
+  '@iconify/json': ^2.2.529
   '@iconify/tailwind': ^1.2.0
-  '@iconify/vue': 5.0.0
-  '@intlify/core-base': ^11.1.7
+  '@iconify/vue': 5.0.2
+  '@intlify/core-base': ^11.4.12
   '@intlify/unplugin-vue-i18n': ^6.0.8
-  '@jspm/generator': ^2.6.2
+  '@jspm/generator': ^2.16.3
   '@manypkg/get-packages': ^3.0.0
   '@microsoft/fetch-event-source': ^2.0.1
   '@nolebase/vitepress-plugin-git-changelog': ^2.18.0
-  '@playwright/test': ^1.56.1
-  '@pnpm/workspace.read-manifest': ^1000.2.6
+  '@playwright/test': ^1.63.0
+  '@pnpm/workspace.read-manifest': ^1000.3.1
   '@stylistic/stylelint-plugin': ^3.1.3
   '@tailwindcss/nesting': 0.0.0-insiders.565cd3e
-  '@tailwindcss/typography': ^0.5.16
+  '@tailwindcss/typography': ^0.5.20
   '@tanstack/vue-query': ^5.91.0
-  '@tanstack/vue-store': ^0.8.0
-  '@tinyflow-ai/vue': ^1.1.1
+  '@tanstack/vue-store': ^0.11.1
+  '@tinyflow-ai/vue': ^1.3.7
   '@tinymce/tinymce-vue': ^6.1.0
   '@types/archiver': ^6.0.3
   '@types/codemirror': ^5.60.13
@@ -62,18 +62,18 @@ catalog:
   '@types/nprogress': ^0.2.3
   '@types/postcss-import': ^14.0.3
   '@types/qrcode': 1.5.6
-  '@types/qs': ^6.14.0
+  '@types/qs': ^6.15.1
   '@types/sortablejs': ^1.15.8
-  '@typescript-eslint/eslint-plugin': ^8.46.4
-  '@typescript-eslint/parser': ^8.46.4
+  '@typescript-eslint/eslint-plugin': ^8.70.0
+  '@typescript-eslint/parser': ^8.70.0
   '@vee-validate/zod': ^4.15.1
   '@videojs-player/vue': ^1.0.0
   '@vite-pwa/vitepress': ^1.0.0
-  '@vitejs/plugin-vue': ^6.0.1
+  '@vitejs/plugin-vue': ^6.0.9
   '@vitejs/plugin-vue-jsx': ^5.1.1
-  '@vue/reactivity': ^3.5.17
-  '@vue/shared': ^3.5.24
-  '@vue/test-utils': ^2.4.6
+  '@vue/reactivity': ^3.5.43
+  '@vue/shared': ^3.5.43
+  '@vue/test-utils': ^2.5.1
   '@vueuse/core': ^13.4.0
   '@vueuse/integrations': ^14.0.0
   '@vueuse/motion': ^3.0.3
@@ -84,8 +84,8 @@ catalog:
   axios-mock-adapter: ^2.1.0
   benz-amr-recorder: ^1.1.5
   bpmn-js: ^17.11.1
-  bpmn-js-properties-panel: 5.23.0
-  bpmn-js-token-simulation: ^0.36.3
+  bpmn-js-properties-panel: 5.65.0
+  bpmn-js-token-simulation: ^0.40.0
   cac: ^6.7.14
   camunda-bpmn-moddle: ^7.0.1
   chalk: ^5.4.1
@@ -112,7 +112,7 @@ catalog:
   element-plus: ^2.10.2
   es-toolkit: ^1.41.0
   eslint: ^9.39.1
-  eslint-config-turbo: ^2.6.1
+  eslint-config-turbo: ^2.10.13
   eslint-plugin-command: ^3.3.1
   eslint-plugin-eslint-comments: ^3.2.0
   eslint-plugin-import-x: ^4.16.1
@@ -155,32 +155,32 @@ catalog:
   markmap-view: ^0.16.0
   medium-zoom: ^1.1.0
   naive-ui: ^2.42.0
-  nitropack: ^2.11.13
+  nitropack: ^2.13.4
   nprogress: ^0.2.0
   ora: ^8.2.0
   pinia: ^3.0.3
   pinia-plugin-persistedstate: ^4.4.1
-  pkg-types: ^2.2.0
-  playwright: ^1.56.1
-  postcss: ^8.5.6
+  pkg-types: ^2.3.3
+  playwright: ^1.63.0
+  postcss: ^8.5.28
   postcss-antd-fixes: ^0.2.0
   postcss-html: ^1.8.0
   postcss-import: ^16.1.1
   postcss-preset-env: ^10.2.4
   postcss-scss: ^4.0.9
-  prettier: ^3.6.2
-  prettier-plugin-tailwindcss: ^0.7.1
-  publint: ^0.3.12
+  prettier: ^3.9.8
+  prettier-plugin-tailwindcss: ^0.8.1
+  publint: ^0.3.24
   qrcode: 1.5.4
-  qs: ^6.14.0
-  reka-ui: ^2.6.0
+  qs: ^6.16.0
+  reka-ui: ^2.10.4
   resolve.exports: ^2.0.3
-  rimraf: ^6.1.0
-  rollup: ^4.44.1
+  rimraf: ^6.1.3
+  rollup: ^4.63.3
   rollup-plugin-visualizer: ^5.14.0
-  sass: ^1.94.0
+  sass: ^1.104.1
   secure-ls: ^2.0.0
-  sortablejs: ^1.15.6
+  sortablejs: ^1.15.7
   steady-xml: ^0.1.0
   stylelint: ^16.21.0
   stylelint-config-recess-order: ^6.1.0
@@ -198,7 +198,7 @@ catalog:
   theme-colors: ^0.1.0
   tinymce: ^7.3.0
   tippy.js: ^6.3.7
-  turbo: ^2.6.1
+  turbo: ^2.10.13
   typescript: ^5.9.3
   unbuild: ^3.6.1
   unplugin-element-plus: ^0.11.1
@@ -221,7 +221,7 @@ catalog:
   vue-json-viewer: ^3.0.4
   vue-router: ^4.5.1
   vue-tippy: ^6.7.1
-  vue-tsc: ^3.1.4
+  vue-tsc: ^3.3.11
   vue3-print-nb: ^0.1.4
   vue3-signature: ^0.2.4
   vuedraggable: ^4.1.0
